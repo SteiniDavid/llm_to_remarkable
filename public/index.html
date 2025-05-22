@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM to reMarkable</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .panel {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        
+        h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+        }
+        
+        textarea {
+            width: 100%;
+            height: 400px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        
+        .preview {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            background: #fafafa;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .server-controls {
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+            margin-top: 15px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        
+        button:hover:not(:disabled) {
+            opacity: 0.9;
+        }
+        
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .status.warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .server-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .status-indicator.online {
+            background: #28a745;
+        }
+        
+        .status-indicator.offline {
+            background: #dc3545;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        /* reMarkable optimized content */
+        .remarkable-content {
+            font-family: Georgia, serif;
+            font-size: 12pt;
+            line-height: 1.6;
+            color: #000;
+            background: white;
+        }
+        
+        .remarkable-content h1 {
+            font-size: 18pt;
+            margin: 24px 0 16px 0;
+            border-bottom: 2px solid #333;
+            padding-bottom: 8px;
+        }
+        
+        .remarkable-content h2 {
+            font-size: 16pt;
+            margin: 20px 0 12px 0;
+        }
+        
+        .remarkable-content h3 {
+            font-size: 14pt;
+            margin: 16px 0 10px 0;
+        }
+        
+        .remarkable-content pre {
+            background: #f8f9fa;
+            border: 2px solid #333;
+            border-radius: 6px;
+            padding: 16px;
+            margin: 16px 0;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 10pt;
+            line-height: 1.4;
+            overflow-x: auto;
+        }
+        
+        .remarkable-content code {
+            background: #f1f3f4;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 10pt;
+        }
+        
+        .remarkable-content pre code {
+            background: none;
+            padding: 0;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>LLM to reMarkable</h1>
+    
+    <div class="container">
+        <div class="panel">
+            <h3>Markdown Input</h3>
+            <textarea id="markdownInput" placeholder="Paste your markdown here..."></textarea>
+            
+            <div class="controls">
+                <button class="btn-secondary" onclick="loadSample()">Load Sample</button>
+                <button class="btn-secondary" onclick="clearInput()">Clear</button>
+                <button class="btn-primary" onclick="convertToHTML()">Convert</button>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <h3>Preview</h3>
+            <div class="preview" id="preview">
+                <p style="color: #666; text-align: center; margin-top: 50px;">
+                    Converted content will appear here...
+                </p>
+            </div>
+            
+            <div class="controls">
+                <button class="btn-success" onclick="downloadHTML()">Download HTML</button>
+                <button class="btn-secondary" onclick="printToPDF()">Print to PDF</button>
+            </div>
+            
+            <div class="server-controls">
+                <div class="server-status" id="serverStatus">
+                    <div class="status-indicator offline"></div>
+                    <span>Checking server...</span>
+                </div>
+                
+                <div class="form-group">
+                    <label for="filename">Filename:</label>
+                    <input type="text" id="filename" placeholder="my-document" value="llm-output">
+                </div>
+                
+                <div class="form-group">
+                    <label for="folder">reMarkable Folder:</label>
+                    <select id="folder">
+                        <option value="/LLM-Outputs">/LLM-Outputs</option>
+                    </select>
+                </div>
+                
+                <div class="controls">
+                    <button class="btn-success" id="uploadBtn" onclick="uploadToRemarkable()" disabled>
+                        Upload to reMarkable
+                    </button>
+                    <button class="btn-secondary" onclick="checkServerStatus()">Check Status</button>
+                </div>
+            </div>
+            
+            <div id="status"></div>
+        </div>
+    </div>
+
+    <script>
+        // Configure marked with syntax highlighting
+        marked.use({
+            highlight: function(code, language) {
+                if (language && hljs.getLanguage(language)) {
+                    try {
+                        return hljs.highlight(code, { language }).value;
+                    } catch (err) {}
+                    }
+                return hljs.highlightAuto(code).value;
+            },
+            langPrefix: 'hljs language-',
+            breaks: true
+        });
+
+        let serverOnline = false;
+
+        function showStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.innerHTML = `<div class="status ${type}">${message}</div>`;
+            setTimeout(() => status.innerHTML = '', 5000);
+        }
+
+        function convertToHTML() {
+            const markdown = document.getElementById('markdownInput').value;
+            if (!markdown.trim()) {
+                showStatus('Please enter some markdown content first.', 'error');
+                return;
+            }
+
+            try {
+                const html = marked.parse(markdown);
+                const preview = document.getElementById('preview');
+                preview.innerHTML = `<div class="remarkable-content">${html}</div>`;
+                showStatus('Converted successfully!', 'success');
+            } catch (error) {
+                showStatus('Conversion failed: ' + error.message, 'error');
+            }
+        }
+
+        function loadSample() {
+            const sample = `# Data Processing Analysis
+
+This is a **sample document** with *formatting*.
+
+## Code Example
+
+\`\`\`python
+def process_data(df):
+    return df.dropna()
+\`\`\`
+
+## Key Points
+
+- Point one
+- Point two  
+- Point three
+
+> This is a quote block.`;
+
+            document.getElementById('markdownInput').value = sample;
+            convertToHTML();
+        }
+
+        function clearInput() {
+            document.getElementById('markdownInput').value = '';
+            document.getElementById('preview').innerHTML = '<p style="color: #666; text-align: center; margin-top: 50px;">Converted content will appear here...</p>';
+            showStatus('Content cleared.', 'info');
+        }
+
+        function downloadHTML() {
+            const preview = document.getElementById('preview');
+            if (!preview.innerHTML.includes('remarkable-content')) {
+                showStatus('Please convert markdown first.', 'error');
+                return;
+            }
+
+            const fullHTML = generateFullHTML(preview.innerHTML);
+            const blob = new Blob([fullHTML], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `llm-output-${new Date().toISOString().slice(0,10)}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showStatus('HTML file downloaded!', 'success');
+        }
+
+        function generateFullHTML(content) {
+            return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>LLM Output for reMarkable</title>
+    <style>
+        @page { size: A4; margin: 15mm; }
+        body { 
+            font-family: Georgia, serif; 
+            font-size: 11pt; 
+            line-height: 1.6; 
+            color: #000; 
+            background: white;
+            margin: 0;
+            padding: 0;
+        }
+        h1 { font-size: 16pt; margin: 20px 0 12px 0; border-bottom: 2px solid #333; padding-bottom: 5px; }
+        h2 { font-size: 14pt; margin: 16px 0 10px 0; }
+        h3 { font-size: 12pt; margin: 14px 0 8px 0; }
+        pre { 
+            background: #f8f9fa; 
+            border: 2px solid #333; 
+            padding: 12px; 
+            margin: 12px 0; 
+            border-radius: 4px;
+            font-family: 'Monaco', monospace;
+            font-size: 9pt;
+            line-height: 1.4;
+        }
+        code { 
+            background: #f1f3f4; 
+            padding: 3px 6px; 
+            border-radius: 3px;
+            font-family: 'Monaco', monospace;
+            font-size: 9pt;
+        }
+        pre code { background: none; padding: 0; }
+        blockquote { 
+            border-left: 4px solid #333; 
+            margin: 12px 0; 
+            padding-left: 12px; 
+            font-style: italic; 
+        }
+    </style>
+</head>
+<body>
+${content}
+</body>
+</html>`;
+        }
+
+        function printToPDF() {
+            const preview = document.getElementById('preview');
+            if (!preview.innerHTML.includes('remarkable-content')) {
+                showStatus('Please convert markdown first.', 'error');
+                return;
+            }
+            window.print();
+            showStatus('Print dialog opened.', 'info');
+        }
+
+        // Server integration functions
+        async function checkServerStatus() {
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                
+                const statusElement = document.getElementById('serverStatus');
+                const uploadBtn = document.getElementById('uploadBtn');
+                
+                if (response.ok && data.status === 'ok') {
+                    serverOnline = true;
+                    statusElement.innerHTML = `
+                        <div class="status-indicator online"></div>
+                        <span>Server online • rmapi: ${data.rmapi}</span>
+                    `;
+                    uploadBtn.disabled = data.rmapi !== 'available';
+                    
+                    if (data.rmapi === 'available') {
+                        loadFolders();
+                    } else {
+                        showStatus('rmapi not available. Run: rmapi (to authenticate)', 'warning');
+                    }
+                } else {
+                    throw new Error('Server not responding');
+                }
+            } catch (error) {
+                serverOnline = false;
+                const statusElement = document.getElementById('serverStatus');
+                const uploadBtn = document.getElementById('uploadBtn');
+                
+                statusElement.innerHTML = `
+                    <div class="status-indicator offline"></div>
+                    <span>Server offline</span>
+                `;
+                uploadBtn.disabled = true;
+                showStatus('Server not available. Make sure server.js is running.', 'error');
+            }
+        }
+
+        async function loadFolders() {
+            try {
+                const response = await fetch('/api/remarkable-folders');
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    const folderSelect = document.getElementById('folder');
+                    folderSelect.innerHTML = '';
+                    
+                    data.folders.forEach(folder => {
+                        const option = document.createElement('option');
+                        option.value = folder;
+                        option.textContent = folder;
+                        folderSelect.appendChild(option);
+                    });
+                    
+                    // Set default to /LLM-Outputs
+                    folderSelect.value = '/LLM-Outputs';
+                }
+            } catch (error) {
+                console.error('Failed to load folders:', error);
+            }
+        }
+
+        async function uploadToRemarkable() {
+            const markdown = document.getElementById('markdownInput').value;
+            const filename = document.getElementById('filename').value;
+            const folder = document.getElementById('folder').value;
+            
+            if (!markdown.trim()) {
+                showStatus('Please enter some markdown content first.', 'error');
+                return;
+            }
+            
+            if (!serverOnline) {
+                showStatus('Server is not available.', 'error');
+                return;
+            }
+            
+            const uploadBtn = document.getElementById('uploadBtn');
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Uploading...';
+            
+            try {
+                showStatus('Converting and uploading to reMarkable...', 'info');
+                
+                const response = await fetch('/api/convert-and-upload', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        markdown: markdown,
+                        filename: filename || 'llm-output',
+                        folder: folder || '/LLM-Outputs'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showStatus(`✅ Successfully uploaded "${data.filename}" to ${data.folder}`, 'success');
+                } else {
+                    throw new Error(data.error || 'Upload failed');
+                }
+            } catch (error) {
+                showStatus('❌ Upload failed: ' + error.message, 'error');
+                console.error('Upload error:', error);
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = 'Upload to reMarkable';
+            }
+        }
+
+        // Auto-convert on input
+        let timeout;
+        document.getElementById('markdownInput').addEventListener('input', () => {
+            clearTimeout(timeout);
+            timeout = setTimeout(convertToHTML, 1000);
+        });
+
+        // Check server status on load
+        window.addEventListener('load', () => {
+            checkServerStatus();
+        });
+    </script>
+</body>
+</html>
