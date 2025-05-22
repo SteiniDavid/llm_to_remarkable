@@ -1,4 +1,4 @@
-DISCLAIMER: VIBE CODED
+> **⚠️ DISCLAIMER:** VIBE CODED
 
 ````markdown
 # LLM to reMarkable
