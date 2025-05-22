@@ -39,7 +39,8 @@ Convert Markdown through an interactive web UI into reMarkable-optimized HTML/PD
 3. **Install & authenticate rmapi**
 
    ```bash
-   npm install -g rmapi
+   brew install rmapi
+   # When you run rmapi it will ask you to pass in an authentication token that you get from remarkable.
    rmapi
    ```
 
@@ -48,6 +49,7 @@ Convert Markdown through an interactive web UI into reMarkable-optimized HTML/PD
 4. **Verify `rmapi` is available**
 
    ```bash
+   which rmapi
    rmapi version
    ```
 
