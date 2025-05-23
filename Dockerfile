@@ -49,7 +49,7 @@ ENV RMAPI_CONFIG=/home/nodeapp/.config/.rmapi
 VOLUME ["/home/nodeapp/.config"]
 
 # Expose and run
-EXPOSE 3000
-ENV PORT=3000
+EXPOSE 3020
+ENV PORT=3020
 CMD ["npm","start"]
 

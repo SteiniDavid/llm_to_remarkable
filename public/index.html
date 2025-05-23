@@ -3,327 +3,886 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LLM to reMarkable</title>
+    <title>LLM to reMarkable - Modern UI</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            background: #f5f5f5;
-        }
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css">
+    <style id="syntax-override">
+        /* Force override highlight.js default styles for color e-ink */
+        pre code.hljs { display: block; overflow-x: auto; padding: 1em; }
+        code.hljs { padding: 3px 5px; }
+        .hljs { background: transparent !important; color: #000 !important; }
         
+        /* Color scheme for color e-ink - high contrast colors */
+        .hljs-keyword, .hljs-selector-tag, .hljs-title, .hljs-section, .hljs-doctag, 
+        .hljs-name, .hljs-strong { color: #0033cc !important; font-weight: bold !important; }
+        
+        .hljs-string, .hljs-title.class_, .hljs-variable.language_, .hljs-template-variable,
+        .hljs-attr, .hljs-quote, .hljs-link, .hljs-symbol { color: #008800 !important; }
+        
+        .hljs-comment, .hljs-meta { color: #666666 !important; font-style: italic !important; }
+        
+        .hljs-number, .hljs-literal, .hljs-built_in, .hljs-regexp { color: #cc5200 !important; }
+        
+        .hljs-title.function_, .hljs-selector-id, .hljs-selector-class { color: #6600cc !important; font-weight: bold !important; }
+        
+        .hljs-variable, .hljs-params, .hljs-template-tag { color: #006666 !important; }
+        
+        .hljs-type, .hljs-class, .hljs-builtin-name { color: #990099 !important; font-weight: bold !important; }
+        
+        .hljs-bullet, .hljs-code, .hljs-emphasis { color: #cc5200 !important; }
+        
+        .hljs-deletion { color: #990000 !important; text-decoration: line-through !important; }
+        .hljs-addition { color: #006600 !important; }
+        
+        /* Dark mode colors - brighter for contrast */
+        [data-theme="dark"] .hljs { color: #e9ecef !important; }
+        [data-theme="dark"] .hljs-keyword, [data-theme="dark"] .hljs-selector-tag, 
+        [data-theme="dark"] .hljs-title { color: #6699ff !important; }
+        [data-theme="dark"] .hljs-string, [data-theme="dark"] .hljs-attr { color: #66ff66 !important; }
+        [data-theme="dark"] .hljs-comment { color: #999999 !important; }
+        [data-theme="dark"] .hljs-number, [data-theme="dark"] .hljs-literal { color: #ff9966 !important; }
+        [data-theme="dark"] .hljs-title.function_ { color: #cc99ff !important; }
+        [data-theme="dark"] .hljs-variable { color: #66cccc !important; }
+        [data-theme="dark"] .hljs-type { color: #ff99ff !important; }
+    </style>
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --bg-tertiary: #e9ecef;
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --text-tertiary: #adb5bd;
+            --border-color: #dee2e6;
+            --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            --shadow-md: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-success: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            --gradient-danger: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+            --radius-sm: 0.5rem;
+            --radius-md: 0.75rem;
+            --radius-lg: 1rem;
+            --transition-speed: 0.3s;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #1a1d23;
+            --bg-secondary: #25282f;
+            --bg-tertiary: #2d3139;
+            --text-primary: #e9ecef;
+            --text-secondary: #adb5bd;
+            --text-tertiary: #6c757d;
+            --border-color: #343a40;
+            --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.5);
+            --shadow-md: 0 0.5rem 1rem rgba(0, 0, 0, 0.6);
+            --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.7);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            transition: background-color var(--transition-speed), color var(--transition-speed);
+            overflow-x: hidden;
+        }
+
+        /* Background decoration */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(103, 126, 234, 0.1) 0%, transparent 70%);
+            z-index: -1;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(-50px, -50px) rotate(120deg); }
+            66% { transform: translate(50px, -100px) rotate(240deg); }
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-secondary);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            transition: all var(--transition-speed);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo {
+            width: 40px;
+            height: 40px;
+            background: var(--gradient-primary);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1.25rem;
+        }
+
+        /* Theme Toggle */
+        .theme-toggle {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 2rem;
+            padding: 0.25rem;
+            cursor: pointer;
+            position: relative;
+            width: 60px;
+            height: 32px;
+            transition: all var(--transition-speed);
+        }
+
+        .theme-toggle:hover {
+            box-shadow: var(--shadow-sm);
+        }
+
+        .theme-toggle-slider {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            top: 3px;
+            left: 3px;
+            transition: transform var(--transition-speed);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        [data-theme="dark"] .theme-toggle-slider {
+            transform: translateX(28px);
+        }
+
+        /* Main Content */
         .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 20px;
+            gap: 2rem;
+            min-height: calc(100vh - 80px);
         }
-        
+
         .panel {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            box-shadow: var(--shadow-md);
+            display: flex;
+            flex-direction: column;
+            transition: all var(--transition-speed);
+            position: relative;
+            overflow: hidden;
         }
-        
-        h1 {
-            text-align: center;
-            margin-bottom: 30px;
-            color: #333;
+
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-primary);
+            opacity: 0;
+            transition: opacity var(--transition-speed);
         }
-        
+
+        .panel:hover::before {
+            opacity: 1;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
         h3 {
-            margin: 0 0 15px 0;
-            color: #333;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
         }
-        
+
+        .char-count {
+            font-size: 0.875rem;
+            color: var(--text-tertiary);
+            font-weight: 500;
+        }
+
+        /* Textarea and Preview Container */
+        .content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
         textarea {
+            flex: 1;
             width: 100%;
-            height: 400px;
-            font-family: 'Monaco', 'Courier New', monospace;
+            min-height: 400px;
+            font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
             font-size: 14px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            padding: 15px;
+            line-height: 1.6;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
             resize: vertical;
-            box-sizing: border-box;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: all var(--transition-speed);
         }
-        
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
         .preview {
-            height: 400px;
+            flex: 1;
+            min-height: 400px;
             overflow-y: auto;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            padding: 15px;
-            background: #fafafa;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            background: var(--bg-primary);
+            transition: all var(--transition-speed);
         }
-        
+
+        /* Custom scrollbar for preview */
+        .preview::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .preview::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-sm);
+        }
+
+        .preview::-webkit-scrollbar-thumb {
+            background: var(--text-tertiary);
+            border-radius: var(--radius-sm);
+        }
+
+        .preview::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+
+        /* Buttons */
         .controls {
             display: flex;
-            gap: 10px;
-            margin-top: 15px;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
             flex-wrap: wrap;
         }
-        
-        .server-controls {
-            border-top: 1px solid #eee;
-            padding-top: 15px;
-            margin-top: 15px;
-        }
-        
+
         button {
-            padding: 10px 20px;
+            padding: 0.625rem 1.5rem;
             border: none;
-            border-radius: 4px;
+            border-radius: var(--radius-md);
             cursor: pointer;
-            font-weight: 500;
+            font-weight: 600;
+            font-size: 0.875rem;
+            transition: all var(--transition-speed);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
-        
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        button:active::before {
+            width: 300px;
+            height: 300px;
+        }
+
         button:disabled {
-            opacity: 0.6;
+            opacity: 0.5;
             cursor: not-allowed;
         }
-        
+
         .btn-primary {
-            background: #007bff;
+            background: var(--gradient-primary);
             color: white;
         }
-        
+
         .btn-secondary {
-            background: #6c757d;
-            color: white;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
         }
-        
+
         .btn-success {
-            background: #28a745;
+            background: var(--gradient-success);
             color: white;
         }
-        
-        .btn-warning {
-            background: #ffc107;
-            color: #212529;
-        }
-        
+
         button:hover:not(:disabled) {
-            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
         }
-        
-        .status {
-            margin-top: 15px;
-            padding: 10px;
-            border-radius: 4px;
-            font-weight: 500;
+
+        /* Server Controls */
+        .server-controls {
+            border-top: 1px solid var(--border-color);
+            padding-top: 1.5rem;
+            margin-top: 1.5rem;
         }
-        
-        .status.success {
-            background: #d4edda;
-            color: #155724;
-        }
-        
-        .status.error {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        
-        .status.info {
-            background: #d1ecf1;
-            color: #0c5460;
-        }
-        
-        .status.warning {
-            background: #fff3cd;
-            color: #856404;
-        }
-        
+
         .server-status {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 15px;
-            padding: 10px;
-            background: #f8f9fa;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        
-        .status-indicator {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-        }
-        
-        .status-indicator.online {
-            background: #28a745;
-        }
-        
-        .status-indicator.offline {
-            background: #dc3545;
-        }
-        
-        .form-group {
-            margin-bottom: 15px;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 5px;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            background: var(--bg-primary);
+            border-radius: var(--radius-md);
+            margin-bottom: 1.5rem;
+            font-size: 0.875rem;
             font-weight: 500;
         }
-        
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            position: relative;
+        }
+
+        .status-indicator::before {
+            content: '';
+            position: absolute;
+            top: -3px;
+            left: -3px;
+            right: -3px;
+            bottom: -3px;
+            border-radius: 50%;
+            background: inherit;
+            opacity: 0.3;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(1.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 0.3; }
+        }
+
+        .status-indicator.online {
+            background: #38ef7d;
+        }
+
+        .status-indicator.offline {
+            background: #f45c43;
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
         input, select {
             width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            transition: all var(--transition-speed);
         }
-        
-        /* reMarkable optimized content */
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        /* Status Messages */
+        .status {
+            margin-top: 1rem;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .status-message {
+            padding: 1rem 1.25rem;
+            border-radius: var(--radius-md);
+            font-weight: 500;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .status-message::before {
+            content: '';
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: white;
+        }
+
+        .status.success .status-message {
+            background: rgba(56, 239, 125, 0.1);
+            color: #11998e;
+            border: 1px solid rgba(56, 239, 125, 0.3);
+        }
+
+        .status.success .status-message::before {
+            content: '✓';
+            background: #38ef7d;
+        }
+
+        .status.error .status-message {
+            background: rgba(244, 92, 67, 0.1);
+            color: #eb3349;
+            border: 1px solid rgba(244, 92, 67, 0.3);
+        }
+
+        .status.error .status-message::before {
+            content: '✕';
+            background: #f45c43;
+        }
+
+        .status.info .status-message {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .status.info .status-message::before {
+            content: 'i';
+            background: #667eea;
+        }
+
+        .status.warning .status-message {
+            background: rgba(255, 193, 7, 0.1);
+            color: #f39c12;
+            border: 1px solid rgba(255, 193, 7, 0.3);
+        }
+
+        .status.warning .status-message::before {
+            content: '!';
+            background: #ffc107;
+        }
+
+        /* Remarkable Content Styling - Optimized for e-ink */
         .remarkable-content {
-            font-family: Georgia, serif;
-            font-size: 12pt;
-            line-height: 1.6;
-            color: #000;
-            background: white;
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 14px;
+            line-height: 1.8;
+            color: var(--text-primary);
         }
-        
+
         .remarkable-content h1 {
-            font-size: 18pt;
+            font-size: 24px;
             margin: 24px 0 16px 0;
-            border-bottom: 2px solid #333;
+            border-bottom: 2px solid var(--border-color);
             padding-bottom: 8px;
+            background: none;
+            -webkit-text-fill-color: inherit;
         }
-        
+
         .remarkable-content h2 {
-            font-size: 16pt;
+            font-size: 20px;
             margin: 20px 0 12px 0;
         }
-        
+
         .remarkable-content h3 {
-            font-size: 14pt;
+            font-size: 18px;
             margin: 16px 0 10px 0;
         }
-        
+
         .remarkable-content pre {
-            background: #f8f9fa;
-            border: 2px solid #333;
-            border-radius: 6px;
-            padding: 16px;
-            margin: 16px 0;
-            font-family: 'Monaco', 'Courier New', monospace;
-            font-size: 10pt;
-            line-height: 1.4;
+            background: transparent;
+            border: 2px solid var(--text-primary);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            margin: 1rem 0;
             overflow-x: auto;
+            position: relative;
         }
-        
+
         .remarkable-content code {
-            background: #f1f3f4;
-            padding: 3px 6px;
-            border-radius: 4px;
-            font-family: 'Monaco', 'Courier New', monospace;
-            font-size: 10pt;
+            background: transparent;
+            padding: 0.2rem 0.4rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.875em;
         }
-        
+
         .remarkable-content pre code {
             background: none;
             padding: 0;
+            border: none;
         }
-        
-        @media (max-width: 768px) {
+
+        .remarkable-content blockquote {
+            border-left: 4px solid var(--text-primary);
+            margin: 1rem 0;
+            padding-left: 1rem;
+            font-style: italic;
+            color: var(--text-secondary);
+        }
+
+;
+            text-decoration-style: dotted !important;
+        }
+
+        /* Functions - bold */
+        .remarkable-content .hljs-title.function_,
+        .remarkable-content .hljs-selector-id,
+        .remarkable-content .hljs-selector-class {
+            color: var(--text-primary) !important;
+            font-weight: bold !important;
+        }
+
+        /* Meta and preprocessor - smaller font */
+        .remarkable-content .hljs-meta,
+        .remarkable-content .hljs-preprocessor {
+            color: var(--text-secondary) !important;
+            font-size: 0.9em !important;
+        }
+
+        /* Dark mode adjustments for e-ink preview */
+        [data-theme="dark"] .remarkable-content pre {
+            border-color: var(--text-primary);
+        }
+
+        [data-theme="dark"] .remarkable-content code {
+            border-color: var(--text-secondary);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
             .container {
                 grid-template-columns: 1fr;
+                gap: 1.5rem;
             }
+            
+            .panel {
+                min-height: 500px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .header-content {
+                padding: 0 1rem;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+            }
+            
+            .logo {
+                width: 32px;
+                height: 32px;
+                font-size: 1rem;
+            }
+            
+            .container {
+                padding: 1rem;
+            }
+            
+            .panel {
+                padding: 1.5rem;
+            }
+            
+            .controls {
+                gap: 0.5rem;
+            }
+            
+            button {
+                padding: 0.5rem 1rem;
+                font-size: 0.8125rem;
+            }
+        }
+
+        /* Empty state */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-tertiary);
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        /* Loading animation */
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--text-tertiary);
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Icons */
+        .icon {
+            width: 16px;
+            height: 16px;
+            display: inline-block;
+            vertical-align: middle;
         }
     </style>
 </head>
 <body>
-    <h1>LLM to reMarkable</h1>
-    
+    <header class="header">
+        <div class="header-content">
+            <h1>
+                <div class="logo">rM</div>
+                LLM to reMarkable
+            </h1>
+            <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+                <div class="theme-toggle-slider">
+                    <span id="themeIcon">🌙</span>
+                </div>
+            </button>
+        </div>
+    </header>
+
     <div class="container">
         <div class="panel">
-            <h3>Markdown Input</h3>
-            <textarea id="markdownInput" placeholder="Paste your markdown here..."></textarea>
-            
+            <div class="panel-header">
+                <h3>📝 Markdown Input</h3>
+                <span class="char-count" id="charCount">0 characters</span>
+            </div>
+            <div class="content-area">
+                <textarea id="markdownInput" placeholder="Paste your markdown here or click 'Load Sample' to get started..."></textarea>
+            </div>
             <div class="controls">
-                <button class="btn-secondary" onclick="loadSample()">Load Sample</button>
-                <button class="btn-secondary" onclick="clearInput()">Clear</button>
-                <button class="btn-primary" onclick="convertToHTML()">Convert</button>
+                <button class="btn-secondary" onclick="loadSample()">
+                    <span>📄</span> Load Sample
+                </button>
+                <button class="btn-secondary" onclick="clearInput()">
+                    <span>🗑️</span> Clear
+                </button>
+                <button class="btn-primary" onclick="convertToHTML()">
+                    <span>✨</span> Convert
+                </button>
             </div>
         </div>
-        
+
         <div class="panel">
-            <h3>Preview</h3>
-            <div class="preview" id="preview">
-                <p style="color: #666; text-align: center; margin-top: 50px;">
-                    Converted content will appear here...
-                </p>
+            <div class="panel-header">
+                <h3>👁️ Preview</h3>
             </div>
-            
+            <div class="content-area">
+                <div class="preview" id="preview">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📄</div>
+                        <p>Your converted content will appear here</p>
+                        <p style="font-size: 0.875rem; margin-top: 0.5rem;">Start by entering markdown or loading a sample</p>
+                    </div>
+                </div>
+            </div>
             <div class="controls">
-                <button class="btn-success" onclick="downloadHTML()">Download HTML</button>
-                <button class="btn-secondary" onclick="printToPDF()">Print to PDF</button>
+                <button class="btn-success" onclick="downloadHTML()">
+                    <span>⬇️</span> Download HTML
+                </button>
+                <button class="btn-secondary" onclick="printToPDF()">
+                    <span>🖨️</span> Print to PDF
+                </button>
             </div>
-            
+
             <div class="server-controls">
                 <div class="server-status" id="serverStatus">
                     <div class="status-indicator offline"></div>
                     <span>Checking server...</span>
                 </div>
-                
+
                 <div class="form-group">
-                    <label for="filename">Filename:</label>
+                    <label for="filename">Filename</label>
                     <input type="text" id="filename" placeholder="my-document" value="llm-output">
                 </div>
-                
+
                 <div class="form-group">
-                    <label for="folder">reMarkable Folder:</label>
+                    <label for="folder">reMarkable Folder</label>
                     <select id="folder">
                         <option value="/LLM-Outputs">/LLM-Outputs</option>
                     </select>
                 </div>
-                
+
                 <div class="controls">
                     <button class="btn-success" id="uploadBtn" onclick="uploadToRemarkable()" disabled>
-                        Upload to reMarkable
+                        <span>📤</span> Upload to reMarkable
                     </button>
-                    <button class="btn-secondary" onclick="checkServerStatus()">Check Status</button>
+                    <button class="btn-secondary" onclick="checkServerStatus()">
+                        <span>🔄</span> Check Status
+                    </button>
                 </div>
             </div>
-            
+
             <div id="status"></div>
         </div>
     </div>
 
     <script>
-        // Configure marked with syntax highlighting
-        marked.use({
-            highlight: function(code, language) {
-                if (language && hljs.getLanguage(language)) {
-                    try {
-                        return hljs.highlight(code, { language }).value;
-                    } catch (err) {}
-                    }
-                return hljs.highlightAuto(code).value;
-            },
-            langPrefix: 'hljs language-',
-            breaks: true
+        let serverOnline = false;
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            // Verify highlight.js is loaded
+            if (typeof hljs === 'undefined') {
+                console.error('Highlight.js not loaded!');
+                return;
+            }
+            
+            // Configure marked with syntax highlighting
+            marked.setOptions({
+                highlight: function(code, lang) {
+                    console.log('Highlighting code with language:', lang);
+                    const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                    const result = hljs.highlight(code, { language }).value;
+                    console.log('Highlighted result preview:', result.substring(0, 100) + '...');
+                    return result;
+                },
+                langPrefix: 'hljs language-',
+                breaks: true,
+                gfm: true
+            });
+            
+            console.log('Highlight.js loaded, languages available:', Object.keys(hljs.listLanguages()));
+            
+            initTheme();
+            checkServerStatus();
+            
+            console.log('Highlight.js loaded, languages:', hljs.listLanguages());
+            
+            initTheme();
+            checkServerStatus();
+            updateCharCount();
         });
 
-        let serverOnline = false;
+        // Theme management
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = savedTheme || (systemPrefersDark ? 'dark' : 'light');
+            
+            document.documentElement.setAttribute('data-theme', theme);
+            updateThemeIcon(theme);
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeIcon(newTheme);
+        }
+
+        function updateThemeIcon(theme) {
+            document.getElementById('themeIcon').textContent = theme === 'dark' ? '🌙' : '☀️';
+        }
+
+        // Character counter
+        function updateCharCount() {
+            const text = document.getElementById('markdownInput').value;
+            document.getElementById('charCount').textContent = `${text.length} characters`;
+        }
 
         function showStatus(message, type = 'info') {
             const status = document.getElementById('status');
-            status.innerHTML = `<div class="status ${type}">${message}</div>`;
+            status.innerHTML = `<div class="status ${type}"><div class="status-message">${message}</div></div>`;
             setTimeout(() => status.innerHTML = '', 5000);
         }
 
         function convertToHTML() {
             const markdown = document.getElementById('markdownInput').value;
             if (!markdown.trim()) {
-                showStatus('Please enter some markdown content first.', 'error');
+                showStatus('Please enter some markdown content first', 'error');
                 return;
             }
 
@@ -331,46 +890,161 @@
                 const html = marked.parse(markdown);
                 const preview = document.getElementById('preview');
                 preview.innerHTML = `<div class="remarkable-content">${html}</div>`;
+                
+                // Debug: Check if code blocks have hljs classes
+                const codeBlocks = preview.querySelectorAll('pre code');
+                console.log(`Found ${codeBlocks.length} code blocks`);
+                codeBlocks.forEach((block, i) => {
+                    console.log(`Code block ${i} classes:`, block.className);
+                });
+                
                 showStatus('Converted successfully!', 'success');
             } catch (error) {
                 showStatus('Conversion failed: ' + error.message, 'error');
+                console.error('Conversion error:', error);
             }
         }
 
         function loadSample() {
             const sample = `# Data Processing Analysis
 
-This is a **sample document** with *formatting*.
+Welcome to this **comprehensive guide** on modern data processing techniques.
 
-## Code Example
+## Introduction
+
+This document covers *essential concepts* in data processing with practical examples.
+
+## Code Examples
+
+### Python Implementation
 
 \`\`\`python
+import pandas as pd
+import numpy as np
+
 def process_data(df):
-    return df.dropna()
+    """Clean and process the dataframe"""
+    # Remove null values
+    df = df.dropna()
+    
+    # Apply transformations
+    df['processed'] = df['value'].apply(lambda x: x * 2)
+    
+    return df
+
+# Example usage
+data = pd.DataFrame({
+    'value': [1, 2, 3, 4, 5],
+    'category': ['A', 'B', 'A', 'B', 'C']
+})
+
+result = process_data(data)
+print(result.head())
 \`\`\`
 
-## Key Points
+### JavaScript Alternative
 
-- Point one
-- Point two  
-- Point three
+\`\`\`javascript
+const processData = (data) => {
+    // Filter out null values
+    return data
+        .filter(item => item.value !== null)
+        .map(item => ({
+            ...item,
+            processed: item.value * 2
+        }));
+};
 
-> This is a quote block.`;
+// Example usage
+const dataset = [
+    { value: 1, category: 'A' },
+    { value: 2, category: 'B' },
+    { value: null, category: 'C' },
+    { value: 4, category: 'B' }
+];
+
+const result = processData(dataset);
+console.log(result);
+\`\`\`
+
+### SQL Query Example
+
+\`\`\`sql
+-- Select processed data with aggregations
+SELECT 
+    category,
+    COUNT(*) as count,
+    AVG(value) as avg_value,
+    SUM(value * 2) as processed_sum
+FROM 
+    data_table
+WHERE 
+    value IS NOT NULL
+GROUP BY 
+    category
+ORDER BY 
+    avg_value DESC;
+\`\`\`
+
+### Bash Script
+
+\`\`\`bash
+#!/bin/bash
+# Process log files
+
+for file in *.log; do
+    echo "Processing $file..."
+    grep "ERROR" "$file" > "errors_$file"
+done
+\`\`\`
+
+## Key Takeaways
+
+1. **Data Cleaning** - Always validate and clean your input data
+2. **Transformation** - Apply consistent transformations across datasets
+3. **Documentation** - Document your processing steps thoroughly
+
+> "Good data processing is the foundation of reliable analysis" - Data Science Principles
+
+## Performance Considerations
+
+When working with large datasets, consider:
+
+- Using vectorized operations instead of loops
+- Implementing proper indexing strategies
+- Monitoring memory usage during processing
+- Utilizing parallel processing where appropriate
+
+### Inline Code Examples
+
+You can use \`pandas.read_csv()\` to load data, or \`json.loads()\` for JSON parsing.
+
+## Conclusion
+
+Effective data processing requires attention to detail and consistent methodology. Following these principles will help ensure reliable and reproducible results.`;
 
             document.getElementById('markdownInput').value = sample;
+            updateCharCount();
             convertToHTML();
         }
 
         function clearInput() {
             document.getElementById('markdownInput').value = '';
-            document.getElementById('preview').innerHTML = '<p style="color: #666; text-align: center; margin-top: 50px;">Converted content will appear here...</p>';
-            showStatus('Content cleared.', 'info');
+            document.getElementById('preview').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">📄</div>
+                    <p>Your converted content will appear here</p>
+                    <p style="font-size: 0.875rem; margin-top: 0.5rem;">Start by entering markdown or loading a sample</p>
+                </div>
+            `;
+            updateCharCount();
+            showStatus('Content cleared', 'info');
         }
 
         function downloadHTML() {
             const preview = document.getElementById('preview');
-            if (!preview.innerHTML.includes('remarkable-content')) {
-                showStatus('Please convert markdown first.', 'error');
+            if (!preview.querySelector('.remarkable-content')) {
+                showStatus('Please convert markdown first', 'error');
                 return;
             }
 
@@ -379,7 +1053,7 @@ def process_data(df):
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `llm-output-${new Date().toISOString().slice(0,10)}.html`;
+            a.download = `${document.getElementById('filename').value || 'llm-output'}-${new Date().toISOString().slice(0,10)}.html`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -388,6 +1062,9 @@ def process_data(df):
         }
 
         function generateFullHTML(content) {
+            const theme = document.documentElement.getAttribute('data-theme');
+            const isDark = theme === 'dark';
+            
             return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -404,33 +1081,48 @@ def process_data(df):
             margin: 0;
             padding: 0;
         }
-        h1 { font-size: 16pt; margin: 20px 0 12px 0; border-bottom: 2px solid #333; padding-bottom: 5px; }
+        h1 { font-size: 16pt; margin: 20px 0 12px 0; border-bottom: 2px solid #000; padding-bottom: 5px; }
         h2 { font-size: 14pt; margin: 16px 0 10px 0; }
         h3 { font-size: 12pt; margin: 14px 0 8px 0; }
         pre { 
-            background: #f8f9fa; 
-            border: 2px solid #333; 
+            background: transparent; 
+            border: 2px solid #000; 
             padding: 12px; 
             margin: 12px 0; 
             border-radius: 4px;
-            font-family: 'Monaco', monospace;
+            font-family: 'Monaco', 'Courier New', monospace;
             font-size: 9pt;
             line-height: 1.4;
+            overflow-wrap: break-word;
+            white-space: pre-wrap;
         }
         code { 
-            background: #f1f3f4; 
+            background: transparent; 
             padding: 3px 6px; 
+            border: 1px solid #333;
             border-radius: 3px;
-            font-family: 'Monaco', monospace;
+            font-family: 'Monaco', 'Courier New', monospace;
             font-size: 9pt;
         }
-        pre code { background: none; padding: 0; }
+        pre code { background: none; padding: 0; border: none; }
         blockquote { 
-            border-left: 4px solid #333; 
+            border-left: 4px solid #000; 
             margin: 12px 0; 
             padding-left: 12px; 
-            font-style: italic; 
+            font-style: italic;
+            color: #333;
         }
+        
+        /* Color e-ink optimized syntax highlighting */
+        .hljs { background: transparent !important; }
+        .hljs-keyword, .hljs-selector-tag, .hljs-title { color: #0033cc !important; font-weight: bold !important; }
+        .hljs-string, .hljs-title.class_, .hljs-variable.language_, .hljs-template-variable, .hljs-attr { color: #008800 !important; }
+        .hljs-comment, .hljs-quote { color: #666666 !important; font-style: italic !important; }
+        .hljs-number, .hljs-literal, .hljs-built_in { color: #cc5200 !important; }
+        .hljs-title.function_, .hljs-selector-id, .hljs-selector-class { color: #6600cc !important; font-weight: bold !important; }
+        .hljs-variable, .hljs-params { color: #006666 !important; }
+        .hljs-meta, .hljs-preprocessor { color: #990000 !important; }
+        .hljs-type, .hljs-class { color: #990099 !important; font-weight: bold !important; }
     </style>
 </head>
 <body>
@@ -441,12 +1133,12 @@ ${content}
 
         function printToPDF() {
             const preview = document.getElementById('preview');
-            if (!preview.innerHTML.includes('remarkable-content')) {
-                showStatus('Please convert markdown first.', 'error');
+            if (!preview.querySelector('.remarkable-content')) {
+                showStatus('Please convert markdown first', 'error');
                 return;
             }
             window.print();
-            showStatus('Print dialog opened.', 'info');
+            showStatus('Print dialog opened', 'info');
         }
 
         // Server integration functions
@@ -484,7 +1176,7 @@ ${content}
                     <span>Server offline</span>
                 `;
                 uploadBtn.disabled = true;
-                showStatus('Server not available. Make sure server.js is running.', 'error');
+                showStatus('Server not available. Make sure server.js is running', 'error');
             }
         }
 
@@ -518,18 +1210,19 @@ ${content}
             const folder = document.getElementById('folder').value;
             
             if (!markdown.trim()) {
-                showStatus('Please enter some markdown content first.', 'error');
+                showStatus('Please enter some markdown content first', 'error');
                 return;
             }
             
             if (!serverOnline) {
-                showStatus('Server is not available.', 'error');
+                showStatus('Server is not available', 'error');
                 return;
             }
             
             const uploadBtn = document.getElementById('uploadBtn');
+            const originalText = uploadBtn.innerHTML;
             uploadBtn.disabled = true;
-            uploadBtn.textContent = 'Uploading...';
+            uploadBtn.innerHTML = '<span class="loading"></span> Uploading...';
             
             try {
                 showStatus('Converting and uploading to reMarkable...', 'info');
@@ -549,29 +1242,57 @@ ${content}
                 const data = await response.json();
                 
                 if (response.ok && data.success) {
-                    showStatus(`✅ Successfully uploaded "${data.filename}" to ${data.folder}`, 'success');
+                    showStatus(`Successfully uploaded "${data.filename}" to ${data.folder}`, 'success');
                 } else {
                     throw new Error(data.error || 'Upload failed');
                 }
             } catch (error) {
-                showStatus('❌ Upload failed: ' + error.message, 'error');
+                showStatus('Upload failed: ' + error.message, 'error');
                 console.error('Upload error:', error);
             } finally {
                 uploadBtn.disabled = false;
-                uploadBtn.textContent = 'Upload to reMarkable';
+                uploadBtn.innerHTML = originalText;
             }
         }
 
-        // Auto-convert on input
+        // Auto-convert on input with debouncing
         let timeout;
-        document.getElementById('markdownInput').addEventListener('input', () => {
+        document.getElementById('markdownInput').addEventListener('input', (e) => {
+            updateCharCount();
             clearTimeout(timeout);
             timeout = setTimeout(convertToHTML, 1000);
         });
 
-        // Check server status on load
+        // Listen for system theme changes
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            if (!localStorage.getItem('theme')) {
+                const theme = e.matches ? 'dark' : 'light';
+                document.documentElement.setAttribute('data-theme', theme);
+                updateThemeIcon(theme);
+            }
+        });
+
+        // Initialize on load
         window.addEventListener('load', () => {
+            // Verify highlight.js is loaded
+            if (typeof hljs === 'undefined') {
+                console.error('Highlight.js not loaded!');
+            } else {
+                console.log('Highlight.js loaded, languages available:', Object.keys(hljs.listLanguages()));
+            }
+            
+            initTheme();
             checkServerStatus();
+            updateCharCount();
+            
+            // Test highlighting on page load
+            setTimeout(() => {
+                const testCode = document.querySelector('pre code');
+                if (testCode) {
+                    console.log('Code block found, applying highlight...');
+                    hljs.highlightElement(testCode);
+                }
+            }, 100);
         });
     </script>
 </body>
