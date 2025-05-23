@@ -6,11 +6,17 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const { marked } = require('marked');
-const hljs = require('highlight.js');
+const hljs = require('highlight.js/lib/common');
 const cors = require('cors');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+
+hljs.registerLanguage('javascript', require('highlight.js/lib/languages/javascript'));
+hljs.registerLanguage('python', require('highlight.js/lib/languages/python'));
+hljs.registerLanguage('sql', require('highlight.js/lib/languages/sql'));
+hljs.registerLanguage('bash', require('highlight.js/lib/languages/bash'));
 
 // Middleware
 app.use(cors());
@@ -19,15 +25,16 @@ app.use(express.static('public')); // Serve your frontend files
 
 // Configure marked with syntax highlighting
 marked.setOptions({
-  highlight: function(code, language) {
-    if (language && hljs.getLanguage(language)) {
-      try {
-        return hljs.highlight(code, { language }).value;
-      } catch (err) {}
+  // <code class="hljs language-python"> … </code>
+  langPrefix: 'hljs language-',
+
+  highlight(code, lang) {
+    if (lang && hljs.getLanguage(lang)) {
+      return hljs.highlight(code, { language: lang }).value;
     }
-    return hljs.highlightAuto(code).value;
-  },
-  langPrefix: 'hljs language-'
+
+    return hljs.highlightAuto(code).value;   // auto-detect / best guess
+  }
 });
 
 // Check if rmapi is available and authenticated
@@ -64,16 +71,20 @@ function generateRemarkableHTML(markdownContent, title = 'LLM Output') {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
   <style>
-    body { 
-      font-family: Georgia, serif; 
-      font-size: 11pt; 
-      line-height: 1.6; 
-      color: #000; 
-      background: white;
+    html, body {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+
+      /* your body defaults */
+      font-family: Georgia, serif;
+      font-size: 11pt;
+      line-height: 1.6;
+      color: #000; /* Default text color for PDF */
+      background: #fff;
       margin: 0;
       padding: 20px;
-      max-width: none;
     }
+
     h1 { 
       font-size: 16pt; 
       margin: 20px 0 12px 0; 
@@ -85,8 +96,8 @@ function generateRemarkableHTML(markdownContent, title = 'LLM Output') {
     h4 { font-size: 11pt; margin: 12px 0 6px 0; }
     p { margin: 8px 0; }
     pre { 
-      background: #f8f9fa; 
-      border: 2px solid #333; 
+      background: transparent; /* Changed to transparent */
+      border: 2px solid #000; 
       padding: 12px; 
       margin: 12px 0; 
       border-radius: 4px;
@@ -97,18 +108,20 @@ function generateRemarkableHTML(markdownContent, title = 'LLM Output') {
       white-space: pre-wrap;
     }
     code { 
-      background: #f1f3f4; 
+      background: transparent; /* Changed to transparent */
       padding: 3px 6px; 
+      border: 1px solid #333; /* Keep border for inline code */
       border-radius: 3px;
       font-family: 'Monaco', 'Courier New', monospace;
       font-size: 9pt;
     }
-    pre code { background: none; padding: 0; }
+    pre code { background: none; padding: 0; border: none; } /* Code inside pre should not have its own background/border */
     blockquote { 
-      border-left: 4px solid #333; 
+      border-left: 4px solid #000; 
       margin: 12px 0; 
       padding-left: 12px; 
       font-style: italic; 
+      color: #333;
     }
     ul, ol { margin: 10px 0; padding-left: 25px; }
     li { margin: 4px 0; }
@@ -124,16 +137,33 @@ function generateRemarkableHTML(markdownContent, title = 'LLM Output') {
     }
     th { background-color: #f2f2f2; font-weight: bold; }
 
-    /* Syntax highlighting optimized for e-ink */
-    .hljs { background: #f8f9fa !important; }
-    .hljs-keyword { color: #000080; font-weight: bold; }
-    .hljs-string { color: #006400; }
-    .hljs-comment { color: #707070; font-style: italic; }
-    .hljs-number { color: #B8860B; }
-    .hljs-function { color: #4B0082; }
-    .hljs-variable { color: #2F4F4F; }
-    .hljs-type { color: #800080; }
-    .hljs-title { color: #8B0000; font-weight: bold; }
+    /* START: Syntax highlighting optimized for e-ink (Copied from index.html's syntax-override) */
+    pre code.hljs { display: block; overflow-x: auto; padding: 1em; }
+    code.hljs { padding: 3px 5px; }
+    .hljs { background: transparent !important; color: #000 !important; }
+    
+    /* Color scheme for color e-ink - high contrast colors */
+    .hljs-keyword, .hljs-selector-tag, .hljs-title, .hljs-section, .hljs-doctag, 
+    .hljs-name, .hljs-strong { color: #0033cc !important; font-weight: bold !important; }
+    
+    .hljs-string, .hljs-title.class_, .hljs-variable.language_, .hljs-template-variable,
+    .hljs-attr, .hljs-quote, .hljs-link, .hljs-symbol { color: #008800 !important; }
+    
+    .hljs-comment, .hljs-meta { color: #666666 !important; font-style: italic !important; }
+    
+    .hljs-number, .hljs-literal, .hljs-built_in, .hljs-regexp { color: #cc5200 !important; }
+    
+    .hljs-title.function_, .hljs-selector-id, .hljs-selector-class { color: #6600cc !important; font-weight: bold !important; }
+    
+    .hljs-variable, .hljs-params, .hljs-template-tag { color: #006666 !important; }
+    
+    .hljs-type, .hljs-class, .hljs-builtin-name { color: #990099 !important; font-weight: bold !important; }
+    
+    .hljs-bullet, .hljs-code, .hljs-emphasis { color: #cc5200 !important; }
+    
+    .hljs-deletion { color: #990000 !important; text-decoration: line-through !important; }
+    .hljs-addition { color: #006600 !important; }
+    /* END: Syntax highlighting optimized for e-ink */
   </style>
 </head>
 <body>
@@ -141,7 +171,6 @@ ${htmlContent}
 </body>
 </html>`;
 }
-
 // Convert markdown to PDF and upload to reMarkable
 async function convertAndUpload(markdown, filename = 'llm-output', folder = '/LLM-Outputs') {
   const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
@@ -161,19 +190,22 @@ async function convertAndUpload(markdown, filename = 'llm-output', folder = '/LL
     // Launch browser
     browser = await puppeteer.launch({
       headless: "new",
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--force-color-profile=srgb']
     });
     
     const page = await browser.newPage();
     
     // Generate HTML content
     const htmlContent = generateRemarkableHTML(markdown, filename);
+    fs.writeFileSync(path.join(__dirname, 'temp', 'debug_output.html'), htmlContent); // Add this line
     await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
     
     // Measure the full height of the rendered content
     const bodyHandle = await page.$('body');
     const { height: bodyHeightPx } = await bodyHandle.boundingBox();
     await bodyHandle.dispose();
+
+    await page.emulateMediaType('print');
 
     // Generate one long PDF at A4 width and full content height
     await page.pdf({
@@ -190,7 +222,7 @@ async function convertAndUpload(markdown, filename = 'llm-output', folder = '/LL
     });
     
     console.log('📄 PDF generated successfully');
-    
+
     // Close browser
     await browser.close();
     browser = null;
@@ -308,7 +340,11 @@ app.post('/api/generate-pdf', async (req, res) => {
     
     const browser = await puppeteer.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--force-color-profile=srgb'
+        ]
     });
     
     const page = await browser.newPage();
