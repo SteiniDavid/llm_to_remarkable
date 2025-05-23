@@ -1,6 +1,6 @@
 > **⚠️ DISCLAIMER:** VIBE CODED
 
-````markdown
+
 # LLM to reMarkable
 
 Convert Markdown through an interactive web UI into reMarkable-optimized HTML/PDF and upload directly to your reMarkable device via `rmapi`.
@@ -22,11 +22,55 @@ Convert Markdown through an interactive web UI into reMarkable-optimized HTML/PD
 
 ## Setup
 
+### Docker Setup
+
+If you’d rather run **LLM to reMarkable** in a container, follow these steps.
+
+1. **Build the Docker image**  
+   From the repo root (where your `Dockerfile` lives):
+   ```bash
+   docker build -t llm2remarkable:latest .
+   ````
+
+2. **One-time rmapi login**
+   You need to authenticate `rmapi` so it can talk to your reMarkable. We’ll mount a named volume to persist the token:
+
+   ```bash
+   docker run --rm -it \
+     -v llm2rm_config:/home/nodeapp/.config \
+     llm2remarkable:latest rmapi
+   ```
+
+   Follow the prompts, paste the code from your tablet, and finish authentication.
+
+3. **Run the service**
+   Now spin up the container in detached mode, forwarding port 3000:
+
+   ```bash
+   docker run -d --name llm2remarkable \
+     -p 3020:3020 \
+     -v llm2rm_config:/home/nodeapp/.config \
+     llm2remarkable:latest
+   ```
+
+   The UI will be available at [http://localhost:3020](http://localhost:3020) (or replace `localhost` with your server’s IP).
+
+Bring it up:
+
+```bash
+docker-compose up -d
+```
+
+Then open [http://localhost:3000](http://localhost:3020) in your browser.
+
+
+### Manual Setup
+
 1. **Clone the repository**  
    ```bash
    git clone https://github.com/yourusername/llm-to-remarkable.git
    cd llm-to-remarkable
-````
+
 
 2. **Install dependencies**
 
