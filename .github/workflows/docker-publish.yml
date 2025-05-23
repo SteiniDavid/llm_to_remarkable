@@ -12,7 +12,6 @@ jobs:
     permissions:
       contents: read                   # for checkout
       packages: write                  # to push to GHCR
-      packages: read                   # to pull any existing image
 
     steps:
       - name: Checkout repository
