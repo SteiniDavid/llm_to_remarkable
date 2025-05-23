@@ -6,35 +6,22 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const { marked } = require('marked');
-const hljs = require('highlight.js/lib/common');
+const hljs = require('highlight.js');
 const cors = require('cors');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-
-hljs.registerLanguage('javascript', require('highlight.js/lib/languages/javascript'));
-hljs.registerLanguage('python', require('highlight.js/lib/languages/python'));
-hljs.registerLanguage('sql', require('highlight.js/lib/languages/sql'));
-hljs.registerLanguage('bash', require('highlight.js/lib/languages/bash'));
 
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static('public')); // Serve your frontend files
 
-// Configure marked with syntax highlighting
+// Configure marked - simple setup since we'll highlight after
 marked.setOptions({
-  // <code class="hljs language-python"> … </code>
-  langPrefix: 'hljs language-',
-
-  highlight(code, lang) {
-    if (lang && hljs.getLanguage(lang)) {
-      return hljs.highlight(code, { language: lang }).value;
-    }
-
-    return hljs.highlightAuto(code).value;   // auto-detect / best guess
-  }
+  gfm: true,
+  breaks: true,
+  langPrefix: 'language-' // This ensures code blocks get language-* classes
 });
 
 // Check if rmapi is available and authenticated
@@ -62,7 +49,44 @@ async function initRmapi() {
 
 // Generate HTML template for PDF conversion
 function generateRemarkableHTML(markdownContent, title = 'LLM Output') {
-  const htmlContent = marked(markdownContent);
+  // First convert markdown to HTML
+  let htmlContent = marked.parse(markdownContent);
+  
+  // Debug: log the HTML before highlighting
+  console.log('📝 HTML before highlighting (first 500 chars):', htmlContent.substring(0, 500));
+  
+  // Count code blocks found
+  const codeBlockMatches = htmlContent.match(/<pre><code class="(?:hljs )?language-(\w+)">/g);
+  console.log(`📊 Found ${codeBlockMatches ? codeBlockMatches.length : 0} code blocks to highlight`);
+  
+  // Then apply syntax highlighting to code blocks
+  // This regex finds all code blocks with language classes (with or without hljs prefix)
+  htmlContent = htmlContent.replace(
+    /<pre><code class="(?:hljs )?language-(\w+)">([\s\S]*?)<\/code><\/pre>/g,
+    (match, language, code) => {
+      console.log(`🎨 Highlighting ${language} code block`);
+      
+      // Decode HTML entities
+      const decodedCode = code
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&#x27;/g, "'")
+        .replace(/&#x2F;/g, '/');
+      
+      try {
+        const validLanguage = hljs.getLanguage(language) ? language : 'plaintext';
+        const highlighted = hljs.highlight(decodedCode, { language: validLanguage }).value;
+        console.log(`✅ Successfully highlighted ${language}, output preview:`, highlighted.substring(0, 100));
+        return `<pre><code class="hljs language-${validLanguage}">${highlighted}</code></pre>`;
+      } catch (err) {
+        console.error('❌ Highlighting error:', err);
+        return match; // Return original if highlighting fails
+      }
+    }
+  );
   
   return `<!DOCTYPE html>
 <html lang="en">
@@ -71,20 +95,21 @@ function generateRemarkableHTML(markdownContent, title = 'LLM Output') {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
   <style>
+    /* Base styles */
     html, body {
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
-
-      /* your body defaults */
+      color-adjust: exact !important;
       font-family: Georgia, serif;
       font-size: 11pt;
       line-height: 1.6;
-      color: #000; /* Default text color for PDF */
+      color: #000;
       background: #fff;
       margin: 0;
       padding: 20px;
     }
 
+    /* Typography */
     h1 { 
       font-size: 16pt; 
       margin: 20px 0 12px 0; 
@@ -95,8 +120,10 @@ function generateRemarkableHTML(markdownContent, title = 'LLM Output') {
     h3 { font-size: 12pt; margin: 14px 0 8px 0; }
     h4 { font-size: 11pt; margin: 12px 0 6px 0; }
     p { margin: 8px 0; }
+    
+    /* Code blocks */
     pre { 
-      background: transparent; /* Changed to transparent */
+      background: transparent;
       border: 2px solid #000; 
       padding: 12px; 
       margin: 12px 0; 
@@ -106,16 +133,29 @@ function generateRemarkableHTML(markdownContent, title = 'LLM Output') {
       line-height: 1.4;
       overflow-wrap: break-word;
       white-space: pre-wrap;
+      page-break-inside: avoid;
     }
+    
+    /* Inline code */
     code { 
-      background: transparent; /* Changed to transparent */
+      background: transparent;
       padding: 3px 6px; 
-      border: 1px solid #333; /* Keep border for inline code */
+      border: 1px solid #333;
       border-radius: 3px;
       font-family: 'Monaco', 'Courier New', monospace;
       font-size: 9pt;
     }
-    pre code { background: none; padding: 0; border: none; } /* Code inside pre should not have its own background/border */
+    
+    /* Code inside pre blocks */
+    pre code { 
+      background: none; 
+      padding: 0; 
+      border: none;
+      display: block;
+      overflow-x: auto;
+    }
+    
+    /* Blockquotes */
     blockquote { 
       border-left: 4px solid #000; 
       margin: 12px 0; 
@@ -123,8 +163,12 @@ function generateRemarkableHTML(markdownContent, title = 'LLM Output') {
       font-style: italic; 
       color: #333;
     }
+    
+    /* Lists */
     ul, ol { margin: 10px 0; padding-left: 25px; }
     li { margin: 4px 0; }
+    
+    /* Tables */
     table {
       border-collapse: collapse;
       width: 100%;
@@ -137,33 +181,102 @@ function generateRemarkableHTML(markdownContent, title = 'LLM Output') {
     }
     th { background-color: #f2f2f2; font-weight: bold; }
 
-    /* START: Syntax highlighting optimized for e-ink (Copied from index.html's syntax-override) */
-    pre code.hljs { display: block; overflow-x: auto; padding: 1em; }
-    code.hljs { padding: 3px 5px; }
-    .hljs { background: transparent !important; color: #000 !important; }
+    /* Syntax highlighting - MUST come after base styles */
+    /* Force all hljs elements to use our color scheme */
+    .hljs {
+      display: block;
+      overflow-x: auto;
+      padding: 0;
+      background: transparent !important;
+      color: #000 !important;
+    }
     
-    /* Color scheme for color e-ink - high contrast colors */
-    .hljs-keyword, .hljs-selector-tag, .hljs-title, .hljs-section, .hljs-doctag, 
-    .hljs-name, .hljs-strong { color: #0033cc !important; font-weight: bold !important; }
+    /* Keywords, tags, titles */
+    .hljs-keyword,
+    .hljs-selector-tag,
+    .hljs-title,
+    .hljs-section,
+    .hljs-doctag,
+    .hljs-name,
+    .hljs-strong {
+      color: #0033cc !important;
+      font-weight: bold !important;
+    }
     
-    .hljs-string, .hljs-title.class_, .hljs-variable.language_, .hljs-template-variable,
-    .hljs-attr, .hljs-quote, .hljs-link, .hljs-symbol { color: #008800 !important; }
+    /* Strings, attributes, quotes */
+    .hljs-string,
+    .hljs-title.class_,
+    .hljs-variable.language_,
+    .hljs-template-variable,
+    .hljs-attr,
+    .hljs-quote,
+    .hljs-link,
+    .hljs-symbol {
+      color: #008800 !important;
+    }
     
-    .hljs-comment, .hljs-meta { color: #666666 !important; font-style: italic !important; }
+    /* Comments and meta */
+    .hljs-comment,
+    .hljs-meta {
+      color: #666666 !important;
+      font-style: italic !important;
+    }
     
-    .hljs-number, .hljs-literal, .hljs-built_in, .hljs-regexp { color: #cc5200 !important; }
+    /* Numbers, literals, built-ins */
+    .hljs-number,
+    .hljs-literal,
+    .hljs-built_in,
+    .hljs-regexp {
+      color: #cc5200 !important;
+    }
     
-    .hljs-title.function_, .hljs-selector-id, .hljs-selector-class { color: #6600cc !important; font-weight: bold !important; }
+    /* Function names, IDs, classes */
+    .hljs-title.function_,
+    .hljs-selector-id,
+    .hljs-selector-class {
+      color: #6600cc !important;
+      font-weight: bold !important;
+    }
     
-    .hljs-variable, .hljs-params, .hljs-template-tag { color: #006666 !important; }
+    /* Variables, parameters */
+    .hljs-variable,
+    .hljs-params,
+    .hljs-template-tag {
+      color: #006666 !important;
+    }
     
-    .hljs-type, .hljs-class, .hljs-builtin-name { color: #990099 !important; font-weight: bold !important; }
+    /* Types, classes, builtins */
+    .hljs-type,
+    .hljs-class,
+    .hljs-builtin-name {
+      color: #990099 !important;
+      font-weight: bold !important;
+    }
     
-    .hljs-bullet, .hljs-code, .hljs-emphasis { color: #cc5200 !important; }
+    /* Other elements */
+    .hljs-bullet,
+    .hljs-code,
+    .hljs-emphasis {
+      color: #cc5200 !important;
+    }
     
-    .hljs-deletion { color: #990000 !important; text-decoration: line-through !important; }
-    .hljs-addition { color: #006600 !important; }
-    /* END: Syntax highlighting optimized for e-ink */
+    .hljs-deletion {
+      color: #990000 !important;
+      text-decoration: line-through !important;
+    }
+    
+    .hljs-addition {
+      color: #006600 !important;
+    }
+    
+    /* Ensure colors are printed */
+    @media print {
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -171,6 +284,7 @@ ${htmlContent}
 </body>
 </html>`;
 }
+
 // Convert markdown to PDF and upload to reMarkable
 async function convertAndUpload(markdown, filename = 'llm-output', folder = '/LLM-Outputs') {
   const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
@@ -187,24 +301,71 @@ async function convertAndUpload(markdown, filename = 'llm-output', folder = '/LL
   try {
     console.log('🚀 Starting PDF conversion...');
     
-    // Launch browser
+    // Launch browser with specific args for better color rendering
     browser = await puppeteer.launch({
       headless: "new",
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--force-color-profile=srgb']
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--force-color-profile=srgb',
+        '--disable-web-security',
+        '--disable-features=IsolateOrigins',
+        '--disable-site-isolation-trials'
+      ]
     });
     
     const page = await browser.newPage();
     
+    // Set viewport for consistent rendering
+    await page.setViewport({
+      width: 794, // A4 width in pixels at 96 DPI
+      height: 1123, // A4 height in pixels at 96 DPI
+      deviceScaleFactor: 2 // Higher quality rendering
+    });
+    
     // Generate HTML content
     const htmlContent = generateRemarkableHTML(markdown, filename);
-    fs.writeFileSync(path.join(__dirname, 'temp', 'debug_output.html'), htmlContent); // Add this line
-    await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+    
+    // Save debug HTML if needed
+    const debugPath = path.join(tempDir, 'debug_output.html');
+    fs.writeFileSync(debugPath, htmlContent);
+    console.log(`📝 Debug HTML saved to: ${debugPath}`);
+    
+    // Set content and wait for any async operations
+    await page.setContent(htmlContent, { 
+      waitUntil: ['load', 'domcontentloaded', 'networkidle0'] 
+    });
+    
+    // Force CSS to be applied and ensure colors are preserved
+    await page.addStyleTag({
+      content: `
+        /* Force color preservation for printing */
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          color-adjust: exact !important;
+        }
+        
+        /* Re-apply syntax highlighting colors with maximum specificity */
+        pre code.hljs .hljs-keyword { color: #0033cc !important; }
+        pre code.hljs .hljs-string { color: #008800 !important; }
+        pre code.hljs .hljs-comment { color: #666666 !important; }
+        pre code.hljs .hljs-number { color: #cc5200 !important; }
+        pre code.hljs .hljs-title.function_ { color: #6600cc !important; }
+        pre code.hljs .hljs-variable { color: #006666 !important; }
+        pre code.hljs .hljs-type { color: #990099 !important; }
+      `
+    });
+    
+    // Wait for styles to fully apply
+    await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 200)));
     
     // Measure the full height of the rendered content
     const bodyHandle = await page.$('body');
     const { height: bodyHeightPx } = await bodyHandle.boundingBox();
     await bodyHandle.dispose();
 
+    // Set media type for print
     await page.emulateMediaType('print');
 
     // Generate one long PDF at A4 width and full content height
@@ -212,13 +373,14 @@ async function convertAndUpload(markdown, filename = 'llm-output', folder = '/LL
       path: pdfPath,
       width: '210mm',                            // A4 width
       height: `${Math.ceil(bodyHeightPx)}px`,    // full content height
-      margin: {                                  // adjust as needed
-        top:    '10mm',
+      margin: {
+        top: '10mm',
         bottom: '10mm',
-        left:   '15mm',
-        right:  '15mm'
+        left: '15mm',
+        right: '15mm'
       },
-      printBackground: true
+      printBackground: true,
+      preferCSSPageSize: false
     });
     
     console.log('📄 PDF generated successfully');
@@ -339,35 +501,79 @@ app.post('/api/generate-pdf', async (req, res) => {
     }
     
     const browser = await puppeteer.launch({
-      headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--force-color-profile=srgb'
-        ]
+      headless: "new",
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--force-color-profile=srgb',
+        '--disable-web-security',
+        '--disable-features=IsolateOrigins',
+        '--disable-site-isolation-trials'
+      ]
     });
     
     const page = await browser.newPage();
+    
+    // Set viewport
+    await page.setViewport({
+      width: 794,
+      height: 1123,
+      deviceScaleFactor: 2
+    });
+    
     const htmlContent = generateRemarkableHTML(markdown, filename);
-    await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+    
+    // Save debug HTML
+    const debugPath = path.join(tempDir, 'debug_output.html');
+    fs.writeFileSync(debugPath, htmlContent);
+    
+    await page.setContent(htmlContent, { 
+      waitUntil: ['load', 'domcontentloaded', 'networkidle0'] 
+    });
+    
+    // Force CSS application with explicit color rules
+    await page.addStyleTag({
+      content: `
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          color-adjust: exact !important;
+        }
+        
+        /* Re-apply colors with high specificity */
+        pre code.hljs .hljs-keyword { color: #0033cc !important; }
+        pre code.hljs .hljs-string { color: #008800 !important; }
+        pre code.hljs .hljs-comment { color: #666666 !important; }
+        pre code.hljs .hljs-number { color: #cc5200 !important; }
+        pre code.hljs .hljs-title.function_ { color: #6600cc !important; }
+        pre code.hljs .hljs-variable { color: #006666 !important; }
+        pre code.hljs .hljs-type { color: #990099 !important; }
+      `
+    });
+    
+    await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 200)));
     
     // Measure full document height
-    const bodyHandle2 = await page.$('body');
-    const { height: fullHeight } = await bodyHandle2.boundingBox();
-    await bodyHandle2.dispose();
+    const bodyHandle = await page.$('body');
+    const { height: fullHeight } = await bodyHandle.boundingBox();
+    await bodyHandle.dispose();
     
-    // Emit a single‐sheet PDF
+    // Set media type
+    await page.emulateMediaType('print');
+    
+    // Generate single-sheet PDF
     await page.pdf({
       path: pdfPath,
       width: '210mm',
       height: `${Math.ceil(fullHeight)}px`,
       margin: {
-        top:    '10mm',
+        top: '10mm',
         bottom: '10mm',
-        left:   '15mm',
-        right:  '15mm'
+        left: '15mm',
+        right: '15mm'
       },
-      printBackground: true
+      printBackground: true,
+      preferCSSPageSize: false
     });
     
     await browser.close();
