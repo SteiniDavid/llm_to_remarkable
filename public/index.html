@@ -884,23 +884,25 @@
             }
 
             try {
+                // 1. Turn Markdown into HTML
                 const html = marked.parse(markdown);
+
+                // 2. Drop it into the preview pane
                 const preview = document.getElementById('preview');
                 preview.innerHTML = `<div class="remarkable-content">${html}</div>`;
-                
-                // Debug: Check if code blocks have hljs classes
-                const codeBlocks = preview.querySelectorAll('pre code');
-                console.log(`Found ${codeBlocks.length} code blocks`);
-                codeBlocks.forEach((block, i) => {
-                    console.log(`Code block ${i} classes:`, block.className);
+
+                // 3. Now that the <pre><code> blocks exist in the DOM, highlight them
+                preview.querySelectorAll('pre code').forEach(block => {
+                hljs.highlightElement(block);
                 });
-                
+
                 showStatus('Converted successfully!', 'success');
             } catch (error) {
                 showStatus('Conversion failed: ' + error.message, 'error');
                 console.error('Conversion error:', error);
             }
         }
+
 
         function loadSample() {
             const sample = `# Data Processing Analysis
