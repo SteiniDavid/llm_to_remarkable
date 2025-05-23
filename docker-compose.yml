@@ -1,0 +1,14 @@
+version: "3.8"
+services:
+  llm2rm:
+    build: .
+    image: llm2rm:latest
+    ports:
+      - "3020:3020"
+    volumes:
+      - llm2rm_config:/home/nodeapp/.config
+    environment:
+      - PORT=3020
+      - RMAPI_CONFIG=/home/nodeapp/.config/.rmapi
+volumes:
+  llm2rm_config:
