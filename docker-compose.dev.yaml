@@ -1,7 +1,8 @@
 version: "3.8"
 services:
   llm2rm:
-    image: ghcr.io/steinidavid/llm_to_remarkable:latest
+    build: .
+    image: llm2rm:dev
     ports:
       - "3020:3020"
     volumes:
