@@ -4,809 +4,240 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="favicon.ico" type="image/x-icon">
-    <title>LLM to reMarkable</title>
+    <title>LLM to reMarkable - Transform Your Content</title>
+    
+    <!-- External Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css">
-    <style id="syntax-override">
-        /* Force override highlight.js default styles for color e-ink */
-        pre code.hljs { display: block; overflow-x: auto; padding: 1em; }
-        code.hljs { padding: 3px 5px; }
-        .hljs { background: transparent !important; color: #000 !important; }
-        
-        /* Color scheme for color e-ink - high contrast colors */
-        .hljs-keyword, .hljs-selector-tag, .hljs-title, .hljs-section, .hljs-doctag, 
-        .hljs-name, .hljs-strong { color: #0033cc !important; font-weight: bold !important; }
-        
-        .hljs-string, .hljs-title.class_, .hljs-variable.language_, .hljs-template-variable,
-        .hljs-attr, .hljs-quote, .hljs-link, .hljs-symbol { color: #008800 !important; }
-        
-        .hljs-comment, .hljs-meta { color: #666666 !important; font-style: italic !important; }
-        
-        .hljs-number, .hljs-literal, .hljs-built_in, .hljs-regexp { color: #cc5200 !important; }
-        
-        .hljs-title.function_, .hljs-selector-id, .hljs-selector-class { color: #6600cc !important; font-weight: bold !important; }
-        
-        .hljs-variable, .hljs-params, .hljs-template-tag { color: #006666 !important; }
-        
-        .hljs-type, .hljs-class, .hljs-builtin-name { color: #990099 !important; font-weight: bold !important; }
-        
-        .hljs-bullet, .hljs-code, .hljs-emphasis { color: #cc5200 !important; }
-        
-        .hljs-deletion { color: #990000 !important; text-decoration: line-through !important; }
-        .hljs-addition { color: #006600 !important; }
-        
-        /* Dark mode colors - brighter for contrast */
-        [data-theme="dark"] .hljs { color: #e9ecef !important; }
-        [data-theme="dark"] .hljs-keyword, [data-theme="dark"] .hljs-selector-tag, 
-        [data-theme="dark"] .hljs-title { color: #6699ff !important; }
-        [data-theme="dark"] .hljs-string, [data-theme="dark"] .hljs-attr { color: #66ff66 !important; }
-        [data-theme="dark"] .hljs-comment { color: #999999 !important; }
-        [data-theme="dark"] .hljs-number, [data-theme="dark"] .hljs-literal { color: #ff9966 !important; }
-        [data-theme="dark"] .hljs-title.function_ { color: #cc99ff !important; }
-        [data-theme="dark"] .hljs-variable { color: #66cccc !important; }
-        [data-theme="dark"] .hljs-type { color: #ff99ff !important; }
-    </style>
-    <style>
-        :root {
-            --bg-primary: #ffffff;
-            --bg-secondary: #f8f9fa;
-            --bg-tertiary: #e9ecef;
-            --text-primary: #212529;
-            --text-secondary: #6c757d;
-            --text-tertiary: #adb5bd;
-            --border-color: #dee2e6;
-            --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-            --shadow-md: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-            --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.175);
-            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --gradient-success: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-            --gradient-danger: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
-            --radius-sm: 0.5rem;
-            --radius-md: 0.75rem;
-            --radius-lg: 1rem;
-            --transition-speed: 0.3s;
-        }
-
-        [data-theme="dark"] {
-            --bg-primary: #1a1d23;
-            --bg-secondary: #25282f;
-            --bg-tertiary: #2d3139;
-            --text-primary: #e9ecef;
-            --text-secondary: #adb5bd;
-            --text-tertiary: #6c757d;
-            --border-color: #343a40;
-            --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.5);
-            --shadow-md: 0 0.5rem 1rem rgba(0, 0, 0, 0.6);
-            --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.7);
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            min-height: 100vh;
-            transition: background-color var(--transition-speed), color var(--transition-speed);
-            overflow-x: hidden;
-        }
-
-        /* Background decoration */
-        body::before {
-            content: '';
-            position: fixed;
-            top: -50%;
-            right: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(103, 126, 234, 0.1) 0%, transparent 70%);
-            z-index: -1;
-            animation: float 20s ease-in-out infinite;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translate(0, 0) rotate(0deg); }
-            33% { transform: translate(-50px, -50px) rotate(120deg); }
-            66% { transform: translate(50px, -100px) rotate(240deg); }
-        }
-
-        /* Header */
-        .header {
-            background: var(--bg-secondary);
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid var(--border-color);
-            padding: 1rem 0;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            transition: all var(--transition-speed);
-        }
-
-        .header-content {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 0 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        h1 {
-            font-size: 1.75rem;
-            font-weight: 700;
-            background: var(--gradient-primary);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .logo {
-            width: 50px;
-            height: 50px;
-            background: var(--gradient-primary);
-            border-radius: var(--radius-sm);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 1.25rem;
-        }
-
-        .logo-img {
-            max-width: 90%;
-            max-height: 90%;
-            /* force the favicon to pure white */
-            filter: brightness(0) invert(1);
-        }
-
-        /* Theme Toggle */
-        .theme-toggle {
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-            border-radius: 2rem;
-            padding: 0.25rem;
-            cursor: pointer;
-            position: relative;
-            width: 60px;
-            height: 32px;
-            transition: all var(--transition-speed);
-        }
-
-        .theme-toggle:hover {
-            box-shadow: var(--shadow-sm);
-        }
-
-        .theme-toggle-slider {
-            position: absolute;
-            width: 24px;
-            height: 24px;
-            background: white;
-            border-radius: 50%;
-            top: 3px;
-            left: 3px;
-            transition: transform var(--transition-speed);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-        }
-
-        [data-theme="dark"] .theme-toggle-slider {
-            transform: translateX(28px);
-        }
-
-        /* Main Content */
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2rem;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-            min-height: calc(100vh - 80px);
-        }
-
-        .panel {
-            background: var(--bg-secondary);
-            border-radius: var(--radius-lg);
-            padding: 2rem;
-            box-shadow: var(--shadow-md);
-            display: flex;
-            flex-direction: column;
-            transition: all var(--transition-speed);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .panel::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: var(--gradient-primary);
-            opacity: 0;
-            transition: opacity var(--transition-speed);
-        }
-
-        .panel:hover::before {
-            opacity: 1;
-        }
-
-        .panel-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-        }
-
-        h3 {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .char-count {
-            font-size: 0.875rem;
-            color: var(--text-tertiary);
-            font-weight: 500;
-        }
-
-        /* Textarea and Preview Container */
-        .content-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-        }
-
-        textarea {
-            flex: 1;
-            width: 100%;
-            min-height: 400px;
-            font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
-            font-size: 14px;
-            line-height: 1.6;
-            border: 2px solid var(--border-color);
-            border-radius: var(--radius-md);
-            padding: 1.5rem;
-            resize: vertical;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            transition: all var(--transition-speed);
-        }
-
-        textarea:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .preview {
-            flex: 1;
-            min-height: 400px;
-            overflow-y: auto;
-            border: 2px solid var(--border-color);
-            border-radius: var(--radius-md);
-            padding: 1.5rem;
-            background: var(--bg-primary);
-            transition: all var(--transition-speed);
-        }
-
-        /* Custom scrollbar for preview */
-        .preview::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .preview::-webkit-scrollbar-track {
-            background: var(--bg-secondary);
-            border-radius: var(--radius-sm);
-        }
-
-        .preview::-webkit-scrollbar-thumb {
-            background: var(--text-tertiary);
-            border-radius: var(--radius-sm);
-        }
-
-        .preview::-webkit-scrollbar-thumb:hover {
-            background: var(--text-secondary);
-        }
-
-        /* Buttons */
-        .controls {
-            display: flex;
-            gap: 0.75rem;
-            margin-top: 1.5rem;
-            flex-wrap: wrap;
-        }
-
-        button {
-            padding: 0.625rem 1.5rem;
-            border: none;
-            border-radius: var(--radius-md);
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.875rem;
-            transition: all var(--transition-speed);
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        button::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
-        }
-
-        button:active::before {
-            width: 300px;
-            height: 300px;
-        }
-
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .btn-primary {
-            background: var(--gradient-primary);
-            color: white;
-        }
-
-        .btn-secondary {
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-            border: 1px solid var(--border-color);
-        }
-
-        .btn-success {
-            background: var(--gradient-success);
-            color: white;
-        }
-
-        button:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
-        }
-
-        /* Server Controls */
-        .server-controls {
-            border-top: 1px solid var(--border-color);
-            padding-top: 1.5rem;
-            margin-top: 1.5rem;
-        }
-
-        .server-status {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 0.75rem 1rem;
-            background: var(--bg-primary);
-            border-radius: var(--radius-md);
-            margin-bottom: 1.5rem;
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
-
-        .status-indicator {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            position: relative;
-        }
-
-        .status-indicator::before {
-            content: '';
-            position: absolute;
-            top: -3px;
-            left: -3px;
-            right: -3px;
-            bottom: -3px;
-            border-radius: 50%;
-            background: inherit;
-            opacity: 0.3;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 0.3; }
-            50% { transform: scale(1.5); opacity: 0; }
-            100% { transform: scale(1); opacity: 0.3; }
-        }
-
-        .status-indicator.online {
-            background: #38ef7d;
-        }
-
-        .status-indicator.offline {
-            background: #f45c43;
-        }
-
-        /* Form Elements */
-        .form-group {
-            margin-bottom: 1.25rem;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-        }
-
-        input, select {
-            width: 100%;
-            padding: 0.75rem 1rem;
-            border: 2px solid var(--border-color);
-            border-radius: var(--radius-md);
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            font-size: 0.875rem;
-            transition: all var(--transition-speed);
-        }
-
-        input:focus, select:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        /* Status Messages */
-        .status {
-            margin-top: 1rem;
-            animation: slideIn 0.3s ease-out;
-        }
-
-        @keyframes slideIn {
-            from { transform: translateY(-10px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
-        .status-message {
-            padding: 1rem 1.25rem;
-            border-radius: var(--radius-md);
-            font-weight: 500;
-            font-size: 0.875rem;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .status-message::before {
-            content: '';
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            color: white;
-        }
-
-        .status.success .status-message {
-            background: rgba(56, 239, 125, 0.1);
-            color: #11998e;
-            border: 1px solid rgba(56, 239, 125, 0.3);
-        }
-
-        .status.success .status-message::before {
-            content: '✓';
-            background: #38ef7d;
-        }
-
-        .status.error .status-message {
-            background: rgba(244, 92, 67, 0.1);
-            color: #eb3349;
-            border: 1px solid rgba(244, 92, 67, 0.3);
-        }
-
-        .status.error .status-message::before {
-            content: '✕';
-            background: #f45c43;
-        }
-
-        .status.info .status-message {
-            background: rgba(102, 126, 234, 0.1);
-            color: #667eea;
-            border: 1px solid rgba(102, 126, 234, 0.3);
-        }
-
-        .status.info .status-message::before {
-            content: 'i';
-            background: #667eea;
-        }
-
-        .status.warning .status-message {
-            background: rgba(255, 193, 7, 0.1);
-            color: #f39c12;
-            border: 1px solid rgba(255, 193, 7, 0.3);
-        }
-
-        .status.warning .status-message::before {
-            content: '!';
-            background: #ffc107;
-        }
-
-        /* Remarkable Content Styling - Optimized for e-ink */
-        .remarkable-content {
-            font-family: Georgia, 'Times New Roman', serif;
-            font-size: 14px;
-            line-height: 1.8;
-            color: var(--text-primary);
-        }
-
-        .remarkable-content h1 {
-            font-size: 24px;
-            margin: 24px 0 16px 0;
-            border-bottom: 2px solid var(--border-color);
-            padding-bottom: 8px;
-            background: none;
-            -webkit-text-fill-color: inherit;
-        }
-
-        .remarkable-content h2 {
-            font-size: 20px;
-            margin: 20px 0 12px 0;
-        }
-
-        .remarkable-content h3 {
-            font-size: 18px;
-            margin: 16px 0 10px 0;
-        }
-
-        .remarkable-content pre {
-            background: transparent;
-            border: 2px solid var(--text-primary);
-            border-radius: var(--radius-md);
-            padding: 1rem;
-            margin: 1rem 0;
-            overflow-x: auto;
-            position: relative;
-        }
-
-        .remarkable-content code {
-            background: transparent;
-            padding: 0.2rem 0.4rem;
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-sm);
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 0.875em;
-        }
-
-        .remarkable-content pre code {
-            background: none;
-            padding: 0;
-            border: none;
-        }
-
-        .remarkable-content blockquote {
-            border-left: 4px solid var(--text-primary);
-            margin: 1rem 0;
-            padding-left: 1rem;
-            font-style: italic;
-            color: var(--text-secondary);
-            text-decoration-style: dotted !important;
-        }
-
-        /* Functions - bold */
-        .remarkable-content .hljs-title.function_,
-        .remarkable-content .hljs-selector-id,
-        .remarkable-content .hljs-selector-class {
-            color: var(--text-primary) !important;
-            font-weight: bold !important;
-        }
-
-        /* Meta and preprocessor - smaller font */
-        .remarkable-content .hljs-meta,
-        .remarkable-content .hljs-preprocessor {
-            color: var(--text-secondary) !important;
-            font-size: 0.9em !important;
-        }
-
-        /* Dark mode adjustments for e-ink preview */
-        [data-theme="dark"] .remarkable-content pre {
-            border-color: var(--text-primary);
-        }
-
-        [data-theme="dark"] .remarkable-content code {
-            border-color: var(--text-secondary);
-        }
-
-        /* Responsive Design */
-        @media (max-width: 1024px) {
-            .container {
-                grid-template-columns: 1fr;
-                gap: 1.5rem;
-            }
-            
-            .panel {
-                min-height: 500px;
-            }
-        }
-
-        @media (max-width: 640px) {
-            .header-content {
-                padding: 0 1rem;
-            }
-            
-            h1 {
-                font-size: 1.5rem;
-            }
-            
-            .logo {
-                width: 32px;
-                height: 32px;
-                font-size: 1rem;
-            }
-            
-            .container {
-                padding: 1rem;
-            }
-            
-            .panel {
-                padding: 1.5rem;
-            }
-            
-            .controls {
-                gap: 0.5rem;
-            }
-            
-            button {
-                padding: 0.5rem 1rem;
-                font-size: 0.8125rem;
-            }
-        }
-
-        /* Empty state */
-        .empty-state {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            color: var(--text-tertiary);
-            text-align: center;
-            padding: 2rem;
-        }
-
-        .empty-state-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            opacity: 0.5;
-        }
-
-        /* Loading animation */
-        .loading {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid var(--text-tertiary);
-            border-radius: 50%;
-            border-top-color: transparent;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* Icons */
-        .icon {
-            width: 16px;
-            height: 16px;
-            display: inline-block;
-            vertical-align: middle;
-        }
-    </style>
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-content">
+            <div class="loading-logo">
+                <img src="/favicon.ico" alt="Logo" class="loading-logo-img">
+            </div>
+            <div class="loading-spinner"></div>
+            <p class="loading-text">Initializing...</p>
+        </div>
+    </div>
+
+    <!-- Header -->
     <header class="header">
         <div class="header-content">
-            <h1>
-                <div class="logo">
-                    <img src="/favicon.ico" alt="Site logo" class="logo-img" />
-                </div>
-                LLM to reMarkable
-            </h1>
-            <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
-                <div class="theme-toggle-slider">
-                    <span id="themeIcon">🌙</span>
-                </div>
-            </button>
+            <div class="header-left">
+                <h1>
+                    <div class="logo">
+                        <img src="/favicon.ico" alt="Site logo" class="logo-img" />
+                    </div>
+                    <span class="app-title">LLM to reMarkable</span>
+                    <span class="app-subtitle">Transform Your Content</span>
+                </h1>
+            </div>
+            <div class="header-right">
+                <button class="icon-btn" onclick="showKeyboardShortcuts()" title="Keyboard Shortcuts (?)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                </button>
+                <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+                    <div class="theme-toggle-slider">
+                        <span id="themeIcon">🌙</span>
+                    </div>
+                </button>
+            </div>
         </div>
     </header>
 
+    <!-- Main Container -->
     <div class="container">
-        <div class="panel">
+        <!-- Input Panel -->
+        <div class="panel input-panel">
             <div class="panel-header">
-                <h3>📝 Markdown Input</h3>
-                <span class="char-count" id="charCount">0 characters</span>
+                <div class="panel-title">
+                    <h3>📝 Markdown Input</h3>
+                    <span class="char-count" id="charCount">0 characters</span>
+                </div>
+                <div class="panel-actions">
+                    <button class="icon-btn" onclick="formatSelection('bold')" title="Bold (Ctrl+B)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path>
+                            <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path>
+                        </svg>
+                    </button>
+                    <button class="icon-btn" onclick="formatSelection('italic')" title="Italic (Ctrl+I)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="19" y1="4" x2="10" y2="4"></line>
+                            <line x1="14" y1="20" x2="5" y2="20"></line>
+                            <line x1="15" y1="4" x2="9" y2="20"></line>
+                        </svg>
+                    </button>
+                    <button class="icon-btn" onclick="formatSelection('code')" title="Code (Ctrl+`)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="16 18 22 12 16 6"></polyline>
+                            <polyline points="8 6 2 12 8 18"></polyline>
+                        </svg>
+                    </button>
+                    <button class="icon-btn" onclick="formatSelection('link')" title="Link (Ctrl+K)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                        </svg>
+                    </button>
+                </div>
             </div>
             <div class="content-area">
-                <textarea id="markdownInput" placeholder="Paste your markdown here or click 'Load Sample' to get started..."></textarea>
+                <textarea 
+                    id="markdownInput" 
+                    class="markdown-input"
+                    placeholder="Paste your markdown here or click 'Load Sample' to get started..."
+                    spellcheck="true"
+                ></textarea>
             </div>
             <div class="controls">
-                <button class="btn-secondary" onclick="loadSample()">
-                    <span>📄</span> Load Sample
+                <button class="btn btn-secondary" onclick="loadSample()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                    Load Sample
                 </button>
-                <button class="btn-secondary" onclick="clearInput()">
-                    <span>🗑️</span> Clear
+                <button class="btn btn-secondary" onclick="clearInput()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                    Clear
                 </button>
-                <button class="btn-primary" onclick="convertToHTML()">
-                    <span>✨</span> Convert
+                <button class="btn btn-primary" onclick="convertToHTML()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                        <polyline points="2 17 12 22 22 17"></polyline>
+                        <polyline points="2 12 12 17 22 12"></polyline>
+                    </svg>
+                    Convert
                 </button>
             </div>
         </div>
 
-        <div class="panel">
+        <!-- Preview Panel -->
+        <div class="panel preview-panel">
             <div class="panel-header">
-                <h3>👁️ Preview</h3>
+                <div class="panel-title">
+                    <h3>👁️ Preview</h3>
+                    <span class="preview-status" id="previewStatus">Ready</span>
+                </div>
+                <div class="panel-actions">
+                    <button class="icon-btn" onclick="zoomIn()" title="Zoom In">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.35-4.35"></path>
+                            <line x1="11" y1="8" x2="11" y2="14"></line>
+                            <line x1="8" y1="11" x2="14" y2="11"></line>
+                        </svg>
+                    </button>
+                    <button class="icon-btn" onclick="zoomOut()" title="Zoom Out">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.35-4.35"></path>
+                            <line x1="8" y1="11" x2="14" y2="11"></line>
+                        </svg>
+                    </button>
+                    <button class="icon-btn" onclick="resetZoom()" title="Reset Zoom">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.35-4.35"></path>
+                        </svg>
+                    </button>
+                </div>
             </div>
             <div class="content-area">
                 <div class="preview" id="preview">
                     <div class="empty-state">
-                        <div class="empty-state-icon">📄</div>
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
                         <p>Your converted content will appear here</p>
-                        <p style="font-size: 0.875rem; margin-top: 0.5rem;">Start by entering markdown or loading a sample</p>
+                        <p style="font-size: 0.875rem; margin-top: 0.5rem; opacity: 0.7;">Start by entering markdown or loading a sample</p>
                     </div>
                 </div>
             </div>
             <div class="controls">
-                <button class="btn-success" onclick="downloadHTML()">
-                    <span>⬇️</span> Download HTML
+                <button class="btn btn-success" onclick="downloadHTML()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Download HTML
                 </button>
-                <button class="btn-secondary" onclick="printToPDF()">
-                    <span>🖨️</span> Print to PDF
+                <button class="btn btn-secondary" onclick="printToPDF()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                        <rect x="6" y="14" width="12" height="8"></rect>
+                    </svg>
+                    Print to PDF
                 </button>
             </div>
 
+            <!-- Server Controls -->
             <div class="server-controls">
                 <div class="server-status" id="serverStatus">
                     <div class="status-indicator offline"></div>
                     <span>Checking server...</span>
                 </div>
 
-                <div class="form-group">
-                    <label for="filename">Filename</label>
-                    <input type="text" id="filename" placeholder="my-document" value="llm-output">
-                </div>
+                <div class="upload-form">
+                    <div class="form-group">
+                        <label for="filename">Filename</label>
+                        <input 
+                            type="text" 
+                            id="filename" 
+                            placeholder="my-document" 
+                            value="llm-output"
+                            class="form-input"
+                        >
+                    </div>
 
-                <div class="form-group">
-                    <label for="folder">reMarkable Folder</label>
-                    <select id="folder">
-                        <option value="/LLM-Outputs">/LLM-Outputs</option>
-                    </select>
-                </div>
+                    <div class="form-group">
+                        <label for="folder">reMarkable Folder</label>
+                        <select id="folder" class="form-input">
+                            <option value="/LLM-Outputs">/LLM-Outputs</option>
+                        </select>
+                    </div>
 
-                <div class="controls">
-                    <button class="btn-success" id="uploadBtn" onclick="uploadToRemarkable()" disabled>
-                        <span>📤</span> Upload to reMarkable
-                    </button>
-                    <button class="btn-secondary" onclick="checkServerStatus()">
-                        <span>🔄</span> Check Status
-                    </button>
+                    <div class="controls">
+                        <button class="btn btn-upload" id="uploadBtn" onclick="uploadToRemarkable()" disabled>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            Upload to reMarkable
+                        </button>
+                        <button class="btn btn-secondary" onclick="checkServerStatus()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="23 4 23 10 17 10"></polyline>
+                                <polyline points="1 20 1 14 7 14"></polyline>
+                                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                            </svg>
+                            Check Status
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -814,495 +245,58 @@
         </div>
     </div>
 
-    <script>
-        let serverOnline = false;
-
-        // Initialize on load
-        window.addEventListener('load', () => {
-            // Verify highlight.js is loaded
-            if (typeof hljs === 'undefined') {
-                console.error('Highlight.js not loaded!');
-                return;
-            }
-            
-            // Configure marked with syntax highlighting
-            marked.setOptions({
-                highlight: function(code, lang) {
-                    console.log('Highlighting code with language:', lang);
-                    const language = hljs.getLanguage(lang) ? lang : 'plaintext';
-                    const result = hljs.highlight(code, { language }).value;
-                    console.log('Highlighted result preview:', result.substring(0, 100) + '...');
-                    return result;
-                },
-                langPrefix: 'hljs language-',
-                breaks: true,
-                gfm: true
-            });
-            
-            console.log('Highlight.js loaded, languages available:', Object.keys(hljs.listLanguages()));
-            
-            initTheme();
-            checkServerStatus();
-            
-            console.log('Highlight.js loaded, languages:', hljs.listLanguages());
-            
-            initTheme();
-            checkServerStatus();
-            updateCharCount();
-        });
-
-        // Theme management
-        function initTheme() {
-            const savedTheme = localStorage.getItem('theme');
-            const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const theme = savedTheme || (systemPrefersDark ? 'dark' : 'light');
-            
-            document.documentElement.setAttribute('data-theme', theme);
-            updateThemeIcon(theme);
-        }
-
-        function toggleTheme() {
-            const currentTheme = document.documentElement.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            
-            document.documentElement.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-            updateThemeIcon(newTheme);
-        }
-
-        function updateThemeIcon(theme) {
-            document.getElementById('themeIcon').textContent = theme === 'dark' ? '🌙' : '☀️';
-        }
-
-        // Character counter
-        function updateCharCount() {
-            const text = document.getElementById('markdownInput').value;
-            document.getElementById('charCount').textContent = `${text.length} characters`;
-        }
-
-        function showStatus(message, type = 'info') {
-            const status = document.getElementById('status');
-            status.innerHTML = `<div class="status ${type}"><div class="status-message">${message}</div></div>`;
-            setTimeout(() => status.innerHTML = '', 5000);
-        }
-
-        function convertToHTML() {
-            const markdown = document.getElementById('markdownInput').value;
-            if (!markdown.trim()) {
-                showStatus('Please enter some markdown content first', 'error');
-                return;
-            }
-
-            try {
-                // 1. Turn Markdown into HTML
-                const html = marked.parse(markdown);
-
-                // 2. Drop it into the preview pane
-                const preview = document.getElementById('preview');
-                preview.innerHTML = `<div class="remarkable-content">${html}</div>`;
-
-                // 3. Now that the <pre><code> blocks exist in the DOM, highlight them
-                preview.querySelectorAll('pre code').forEach(block => {
-                hljs.highlightElement(block);
-                });
-
-                showStatus('Converted successfully!', 'success');
-            } catch (error) {
-                showStatus('Conversion failed: ' + error.message, 'error');
-                console.error('Conversion error:', error);
-            }
-        }
-
-
-        function loadSample() {
-            const sample = `# Data Processing Analysis
-
-Welcome to this **comprehensive guide** on modern data processing techniques.
-
-## Introduction
-
-This document covers *essential concepts* in data processing with practical examples.
-
-## Code Examples
-
-### Python Implementation
-
-\`\`\`python
-import pandas as pd
-import numpy as np
-
-def process_data(df):
-    """Clean and process the dataframe"""
-    # Remove null values
-    df = df.dropna()
-    
-    # Apply transformations
-    df['processed'] = df['value'].apply(lambda x: x * 2)
-    
-    return df
-
-# Example usage
-data = pd.DataFrame({
-    'value': [1, 2, 3, 4, 5],
-    'category': ['A', 'B', 'A', 'B', 'C']
-})
-
-result = process_data(data)
-print(result.head())
-\`\`\`
-
-### JavaScript Alternative
-
-\`\`\`javascript
-const processData = (data) => {
-    // Filter out null values
-    return data
-        .filter(item => item.value !== null)
-        .map(item => ({
-            ...item,
-            processed: item.value * 2
-        }));
-};
-
-// Example usage
-const dataset = [
-    { value: 1, category: 'A' },
-    { value: 2, category: 'B' },
-    { value: null, category: 'C' },
-    { value: 4, category: 'B' }
-];
-
-const result = processData(dataset);
-console.log(result);
-\`\`\`
-
-### SQL Query Example
-
-\`\`\`sql
--- Select processed data with aggregations
-SELECT 
-    category,
-    COUNT(*) as count,
-    AVG(value) as avg_value,
-    SUM(value * 2) as processed_sum
-FROM 
-    data_table
-WHERE 
-    value IS NOT NULL
-GROUP BY 
-    category
-ORDER BY 
-    avg_value DESC;
-\`\`\`
-
-### Bash Script
-
-\`\`\`bash
-#!/bin/bash
-# Process log files
-
-for file in *.log; do
-    echo "Processing $file..."
-    grep "ERROR" "$file" > "errors_$file"
-done
-\`\`\`
-
-## Key Takeaways
-
-1. **Data Cleaning** - Always validate and clean your input data
-2. **Transformation** - Apply consistent transformations across datasets
-3. **Documentation** - Document your processing steps thoroughly
-
-> "Good data processing is the foundation of reliable analysis" - Data Science Principles
-
-## Performance Considerations
-
-When working with large datasets, consider:
-
-- Using vectorized operations instead of loops
-- Implementing proper indexing strategies
-- Monitoring memory usage during processing
-- Utilizing parallel processing where appropriate
-
-### Inline Code Examples
-
-You can use \`pandas.read_csv()\` to load data, or \`json.loads()\` for JSON parsing.
-
-## Conclusion
-
-Effective data processing requires attention to detail and consistent methodology. Following these principles will help ensure reliable and reproducible results.`;
-
-            document.getElementById('markdownInput').value = sample;
-            updateCharCount();
-            convertToHTML();
-        }
-
-        function clearInput() {
-            document.getElementById('markdownInput').value = '';
-            document.getElementById('preview').innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-state-icon">📄</div>
-                    <p>Your converted content will appear here</p>
-                    <p style="font-size: 0.875rem; margin-top: 0.5rem;">Start by entering markdown or loading a sample</p>
+    <!-- Keyboard Shortcuts Modal -->
+    <div class="modal" id="shortcutsModal" onclick="hideKeyboardShortcuts()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3>Keyboard Shortcuts</h3>
+                <button class="icon-btn" onclick="hideKeyboardShortcuts()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="shortcuts-grid">
+                <div class="shortcut-item">
+                    <kbd>Ctrl</kbd> + <kbd>B</kbd>
+                    <span>Bold text</span>
                 </div>
-            `;
-            updateCharCount();
-            showStatus('Content cleared', 'info');
-        }
+                <div class="shortcut-item">
+                    <kbd>Ctrl</kbd> + <kbd>I</kbd>
+                    <span>Italic text</span>
+                </div>
+                <div class="shortcut-item">
+                    <kbd>Ctrl</kbd> + <kbd>`</kbd>
+                    <span>Code format</span>
+                </div>
+                <div class="shortcut-item">
+                    <kbd>Ctrl</kbd> + <kbd>K</kbd>
+                    <span>Insert link</span>
+                </div>
+                <div class="shortcut-item">
+                    <kbd>Ctrl</kbd> + <kbd>Enter</kbd>
+                    <span>Convert markdown</span>
+                </div>
+                <div class="shortcut-item">
+                    <kbd>Ctrl</kbd> + <kbd>S</kbd>
+                    <span>Download HTML</span>
+                </div>
+                <div class="shortcut-item">
+                    <kbd>Ctrl</kbd> + <kbd>P</kbd>
+                    <span>Print to PDF</span>
+                </div>
+                <div class="shortcut-item">
+                    <kbd>?</kbd>
+                    <span>Show shortcuts</span>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        function downloadHTML() {
-            const preview = document.getElementById('preview');
-            if (!preview.querySelector('.remarkable-content')) {
-                showStatus('Please convert markdown first', 'error');
-                return;
-            }
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
 
-            const fullHTML = generateFullHTML(preview.innerHTML);
-            const blob = new Blob([fullHTML], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${document.getElementById('filename').value || 'llm-output'}-${new Date().toISOString().slice(0,10)}.html`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            showStatus('HTML file downloaded!', 'success');
-        }
-
-        function generateFullHTML(content) {
-            const theme = document.documentElement.getAttribute('data-theme');
-            const isDark = theme === 'dark';
-            
-            return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>LLM Output for reMarkable</title>
-    <style>
-        @page { size: A4; margin: 15mm; }
-        body { 
-            font-family: Georgia, serif; 
-            font-size: 11pt; 
-            line-height: 1.6; 
-            color: #000; 
-            background: white;
-            margin: 0;
-            padding: 0;
-        }
-        h1 { font-size: 16pt; margin: 20px 0 12px 0; border-bottom: 2px solid #000; padding-bottom: 5px; }
-        h2 { font-size: 14pt; margin: 16px 0 10px 0; }
-        h3 { font-size: 12pt; margin: 14px 0 8px 0; }
-        pre { 
-            background: transparent; 
-            border: 2px solid #000; 
-            padding: 12px; 
-            margin: 12px 0; 
-            border-radius: 4px;
-            font-family: 'Monaco', 'Courier New', monospace;
-            font-size: 9pt;
-            line-height: 1.4;
-            overflow-wrap: break-word;
-            white-space: pre-wrap;
-        }
-        code { 
-            background: transparent; 
-            padding: 3px 6px; 
-            border: 1px solid #333;
-            border-radius: 3px;
-            font-family: 'Monaco', 'Courier New', monospace;
-            font-size: 9pt;
-        }
-        pre code { background: none; padding: 0; border: none; }
-        blockquote { 
-            border-left: 4px solid #000; 
-            margin: 12px 0; 
-            padding-left: 12px; 
-            font-style: italic;
-            color: #333;
-        }
-        
-        /* Color e-ink optimized syntax highlighting */
-        .hljs { background: transparent !important; }
-        .hljs-keyword, .hljs-selector-tag, .hljs-title { color: #0033cc !important; font-weight: bold !important; }
-        .hljs-string, .hljs-title.class_, .hljs-variable.language_, .hljs-template-variable, .hljs-attr { color: #008800 !important; }
-        .hljs-comment, .hljs-quote { color: #666666 !important; font-style: italic !important; }
-        .hljs-number, .hljs-literal, .hljs-built_in { color: #cc5200 !important; }
-        .hljs-title.function_, .hljs-selector-id, .hljs-selector-class { color: #6600cc !important; font-weight: bold !important; }
-        .hljs-variable, .hljs-params { color: #006666 !important; }
-        .hljs-meta, .hljs-preprocessor { color: #990000 !important; }
-        .hljs-type, .hljs-class { color: #990099 !important; font-weight: bold !important; }
-    </style>
-</head>
-<body>
-${content}
-</body>
-</html>`;
-        }
-
-        function printToPDF() {
-            const preview = document.getElementById('preview');
-            if (!preview.querySelector('.remarkable-content')) {
-                showStatus('Please convert markdown first', 'error');
-                return;
-            }
-            window.print();
-            showStatus('Print dialog opened', 'info');
-        }
-
-        // Server integration functions
-        async function checkServerStatus() {
-            try {
-                const response = await fetch('/api/health');
-                const data = await response.json();
-                
-                const statusElement = document.getElementById('serverStatus');
-                const uploadBtn = document.getElementById('uploadBtn');
-                
-                if (response.ok && data.status === 'ok') {
-                    serverOnline = true;
-                    statusElement.innerHTML = `
-                        <div class="status-indicator online"></div>
-                        <span>Server online • rmapi: ${data.rmapi}</span>
-                    `;
-                    uploadBtn.disabled = data.rmapi !== 'available';
-                    
-                    if (data.rmapi === 'available') {
-                        loadFolders();
-                    } else {
-                        showStatus('rmapi not available. Run: rmapi (to authenticate)', 'warning');
-                    }
-                } else {
-                    throw new Error('Server not responding');
-                }
-            } catch (error) {
-                serverOnline = false;
-                const statusElement = document.getElementById('serverStatus');
-                const uploadBtn = document.getElementById('uploadBtn');
-                
-                statusElement.innerHTML = `
-                    <div class="status-indicator offline"></div>
-                    <span>Server offline</span>
-                `;
-                uploadBtn.disabled = true;
-                showStatus('Server not available. Make sure server.js is running', 'error');
-            }
-        }
-
-        async function loadFolders() {
-            try {
-                const response = await fetch('/api/remarkable-folders');
-                const data = await response.json();
-                
-                if (response.ok && data.success) {
-                    const folderSelect = document.getElementById('folder');
-                    folderSelect.innerHTML = '';
-                    
-                    data.folders.forEach(folder => {
-                        const option = document.createElement('option');
-                        option.value = folder;
-                        option.textContent = folder;
-                        folderSelect.appendChild(option);
-                    });
-                    
-                    // Set default to /LLM-Outputs
-                    folderSelect.value = '/LLM-Outputs';
-                }
-            } catch (error) {
-                console.error('Failed to load folders:', error);
-            }
-        }
-
-        async function uploadToRemarkable() {
-            const markdown = document.getElementById('markdownInput').value;
-            const filename = document.getElementById('filename').value;
-            const folder = document.getElementById('folder').value;
-            
-            if (!markdown.trim()) {
-                showStatus('Please enter some markdown content first', 'error');
-                return;
-            }
-            
-            if (!serverOnline) {
-                showStatus('Server is not available', 'error');
-                return;
-            }
-            
-            const uploadBtn = document.getElementById('uploadBtn');
-            const originalText = uploadBtn.innerHTML;
-            uploadBtn.disabled = true;
-            uploadBtn.innerHTML = '<span class="loading"></span> Uploading...';
-            
-            try {
-                showStatus('Converting and uploading to reMarkable...', 'info');
-                
-                const response = await fetch('/api/convert-and-upload', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        markdown: markdown,
-                        filename: filename || 'llm-output',
-                        folder: folder || '/LLM-Outputs'
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok && data.success) {
-                    showStatus(`Successfully uploaded "${data.filename}" to ${data.folder}`, 'success');
-                } else {
-                    throw new Error(data.error || 'Upload failed');
-                }
-            } catch (error) {
-                showStatus('Upload failed: ' + error.message, 'error');
-                console.error('Upload error:', error);
-            } finally {
-                uploadBtn.disabled = false;
-                uploadBtn.innerHTML = originalText;
-            }
-        }
-
-        // Auto-convert on input with debouncing
-        let timeout;
-        document.getElementById('markdownInput').addEventListener('input', (e) => {
-            updateCharCount();
-            clearTimeout(timeout);
-            timeout = setTimeout(convertToHTML, 1000);
-        });
-
-        // Listen for system theme changes
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-            if (!localStorage.getItem('theme')) {
-                const theme = e.matches ? 'dark' : 'light';
-                document.documentElement.setAttribute('data-theme', theme);
-                updateThemeIcon(theme);
-            }
-        });
-
-        // Initialize on load
-        window.addEventListener('load', () => {
-            // Verify highlight.js is loaded
-            if (typeof hljs === 'undefined') {
-                console.error('Highlight.js not loaded!');
-            } else {
-                console.log('Highlight.js loaded, languages available:', Object.keys(hljs.listLanguages()));
-            }
-            
-            initTheme();
-            checkServerStatus();
-            updateCharCount();
-            
-            // Test highlighting on page load
-            setTimeout(() => {
-                const testCode = document.querySelector('pre code');
-                if (testCode) {
-                    console.log('Code block found, applying highlight...');
-                    hljs.highlightElement(testCode);
-                }
-            }, 100);
-        });
-    </script>
+    <script src="app.js"></script>
 </body>
 </html>
