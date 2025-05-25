@@ -69,7 +69,7 @@
 }
 
 /* ==========================================
-   Base Styles
+   Base Styles - SCROLLING FIXES
    ========================================== */
 
 * {
@@ -78,6 +78,9 @@
 
 html {
     height: 100%;
+    /* CRITICAL: Allow scrolling */
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 body {
@@ -86,8 +89,12 @@ body {
     font-family: var(--font-sans);
     background: var(--bg-primary);
     color: var(--text-primary);
-    height: 100%;
-    overflow: hidden;
+    /* CRITICAL FIX: Allow scrolling on mobile, constrained on desktop */
+    min-height: 100vh;
+    overflow-x: hidden;
+    /* Desktop: no scroll (content fits in viewport)
+       Mobile: scroll enabled via media queries */
+    overflow-y: hidden;
     transition: background-color var(--transition-slow), color var(--transition-slow);
 }
 
@@ -153,13 +160,14 @@ body {
 }
 
 /* ==========================================
-   Header
+   Header - FIXED POSITIONING
    ========================================== */
 
 .header {
     height: var(--header-height);
     background: var(--bg-secondary);
     border-bottom: 1px solid var(--border-color);
+    /* CRITICAL: Changed from sticky to fixed but ensure it doesn't break scrolling */
     position: sticky;
     top: 0;
     z-index: 100;
@@ -271,10 +279,11 @@ h1 {
 }
 
 /* ==========================================
-   Main Container & Panels
+   Main Container & Panels - SCROLLING FIXES
    ========================================== */
 
 .container {
+    /* CRITICAL FIX: Constrain height in desktop mode, flexible in mobile */
     height: calc(100vh - var(--header-height));
     max-width: 1600px;
     margin: 0 auto;
@@ -282,6 +291,7 @@ h1 {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 1.5rem;
+    /* Allow scrolling only when in mobile mode */
     overflow: hidden;
 }
 
@@ -291,6 +301,9 @@ h1 {
     border-radius: var(--border-radius-lg);
     display: flex;
     flex-direction: column;
+    /* CRITICAL: Constrain panel height in desktop mode */
+    min-height: 0;
+    height: 100%;
     overflow: hidden;
     box-shadow: var(--shadow-md);
     transition: all var(--transition-base);
@@ -339,28 +352,32 @@ h1 {
     gap: 0.5rem;
 }
 
-/* Content Area */
+/* Content Area - CRITICAL FIXES */
 .content-area {
     flex: 1;
-    overflow: hidden;
+    /* CRITICAL: Enable scrolling and flexible sizing */
+    overflow: auto;
     display: flex;
     flex-direction: column;
     min-height: 0;
+    /* CRITICAL: Remove max-height in desktop, let container constrain */
+    height: 100%;
 }
 
 /* ==========================================
-   Textarea Styles
+   Textarea Styles - SCROLLING FIXES
    ========================================== */
 
 .markdown-input {
     width: 100%;
     height: 100%;
+    /* CRITICAL: Remove minimum height in desktop mode */
     font-family: var(--font-mono);
     font-size: 14px;
     line-height: 1.8;
     border: none;
     padding: var(--panel-padding);
-    resize: none;
+    resize: none; /* Disable resize in constrained layout */
     background: var(--bg-secondary);
     color: var(--text-primary);
     overflow-y: auto;
@@ -397,11 +414,12 @@ h1 {
 }
 
 /* ==========================================
-   Preview Styles
+   Preview Styles - SCROLLING FIXES
    ========================================== */
 
 .preview {
     height: 100%;
+    /* CRITICAL: Remove height constraints in desktop mode */
     overflow-y: auto;
     padding: var(--panel-padding);
     background: var(--bg-secondary);
@@ -423,6 +441,7 @@ h1 {
     align-items: center;
     justify-content: center;
     height: 100%;
+    min-height: 200px;
     color: var(--text-tertiary);
     text-align: center;
     padding: 2rem;
@@ -828,18 +847,43 @@ h1 {
 }
 
 /* ==========================================
-   Responsive Design
+   Responsive Design - CRITICAL FIXES
    ========================================== */
 
 @media (max-width: 1024px) {
+    body {
+        overflow-y: auto; /* Enable page scrolling on mobile */
+    }
+    
     .container {
+        /* CRITICAL: Change to single column and allow natural scrolling */
         grid-template-columns: 1fr;
-        height: auto;
-        overflow-y: auto;
+        height: auto; /* Remove height constraint for mobile */
+        overflow-y: visible; /* Ensure scrolling works */
     }
     
     .panel {
-        min-height: 500px;
+        /* CRITICAL: Set reasonable heights for mobile */
+        min-height: 400px;
+        height: auto; /* Remove height constraint */
+        overflow: visible; /* Allow expansion */
+    }
+    
+    .content-area {
+        /* CRITICAL: Adjust heights for mobile */
+        max-height: 50vh;
+        min-height: 250px;
+        height: auto; /* Remove height constraint */
+    }
+    
+    .preview {
+        max-height: 50vh;
+        min-height: 250px;
+    }
+    
+    .markdown-input {
+        min-height: 250px;
+        resize: vertical; /* Re-enable resize on mobile */
     }
     
     .app-subtitle {
@@ -863,10 +907,17 @@ h1 {
     
     .container {
         padding: 1rem;
+        gap: 1rem;
     }
     
     .controls {
         padding: 1rem;
+        flex-direction: column; /* Stack buttons vertically on mobile */
+    }
+    
+    .controls .btn {
+        width: 100%; /* Full width buttons on mobile */
+        justify-content: center;
     }
     
     .btn {
@@ -877,6 +928,68 @@ h1 {
     .shortcuts-grid {
         grid-template-columns: 1fr;
     }
+    
+    /* CRITICAL: Mobile specific content area adjustments */
+    .content-area {
+        max-height: 40vh;
+        min-height: 200px;
+        height: auto;
+    }
+    
+    .preview {
+        max-height: 40vh;
+        min-height: 200px;
+    }
+    
+    .markdown-input {
+        min-height: 200px;
+    }
+    
+    /* Ensure toast notifications work on mobile */
+    .toast-container {
+        left: 0.5rem;
+        right: 0.5rem;
+        top: calc(var(--header-height) + 0.5rem);
+    }
+    
+    .toast {
+        min-width: auto;
+        width: 100%;
+    }
+}
+
+/* CRITICAL: Additional mobile fixes */
+@media (max-width: 480px) {
+    .panel-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+        padding: 1rem;
+    }
+    
+    .panel-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+    
+    .upload-form {
+        gap: 0.75rem;
+    }
+    
+    .content-area {
+        max-height: 35vh;
+        min-height: 180px;
+        height: auto;
+    }
+    
+    .preview {
+        max-height: 35vh;
+        min-height: 180px;
+    }
+    
+    .markdown-input {
+        min-height: 180px;
+    }
 }
 
 /* ==========================================
@@ -886,6 +999,7 @@ h1 {
 @media print {
     body {
         background: white;
+        overflow: visible !important;
     }
     
     .header,
@@ -900,6 +1014,7 @@ h1 {
         display: block;
         padding: 0;
         height: auto;
+        overflow: visible;
     }
     
     .preview-panel {
@@ -909,6 +1024,8 @@ h1 {
     
     .preview {
         padding: 0;
+        max-height: none;
+        overflow: visible;
     }
 }
 
@@ -921,6 +1038,9 @@ h1 {
     font-size: 14px;
     line-height: 1.8;
     color: var(--text-primary);
+    /* CRITICAL: Ensure content can break and scroll */
+    overflow-wrap: break-word;
+    word-wrap: break-word;
 }
 
 .remarkable-content h1 {
@@ -947,6 +1067,9 @@ h1 {
     padding: 1rem;
     margin: 1rem 0;
     overflow-x: auto;
+    /* CRITICAL: Ensure code blocks can scroll horizontally */
+    white-space: pre-wrap;
+    word-wrap: break-word;
 }
 
 .remarkable-content code {
@@ -1084,4 +1207,29 @@ h1 {
 [data-theme="dark"] .remarkable-content pre,
 [data-theme="dark"] .remarkable-content code {
     color: var(--text-primary) !important;
+}
+
+/* ==========================================
+   Drag and Drop Styles
+   ========================================== */
+
+.drag-over {
+    border: 2px dashed var(--accent-primary) !important;
+    background: var(--accent-light) !important;
+}
+
+.drag-over .markdown-input {
+    opacity: 0.6;
+}
+
+/* ==========================================
+   Loading Animation for Buttons
+   ========================================== */
+
+.loading {
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    display: inline-block;
 }
