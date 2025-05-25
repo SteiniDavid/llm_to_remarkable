@@ -307,6 +307,8 @@ h1 {
     overflow: hidden;
     box-shadow: var(--shadow-md);
     transition: all var(--transition-base);
+    /* CRITICAL: Ensure border-radius is preserved with scrollable content */
+    isolation: isolate;
 }
 
 .panel:hover {
@@ -322,6 +324,9 @@ h1 {
     align-items: center;
     background: var(--bg-tertiary);
     flex-shrink: 0;
+    /* CRITICAL: Respect parent panel border radius */
+    border-top-left-radius: var(--border-radius-lg);
+    border-top-right-radius: var(--border-radius-lg);
 }
 
 .panel-title {
@@ -356,12 +361,15 @@ h1 {
 .content-area {
     flex: 1;
     /* CRITICAL: Enable scrolling and flexible sizing */
-    overflow: auto;
+    overflow: hidden; /* Changed from auto to hidden to let child handle scroll */
     display: flex;
     flex-direction: column;
     min-height: 0;
     /* CRITICAL: Remove max-height in desktop, let container constrain */
     height: 100%;
+    /* CRITICAL: Ensure content respects parent border radius */
+    border-radius: 0;
+    position: relative;
 }
 
 /* ==========================================
@@ -382,6 +390,9 @@ h1 {
     color: var(--text-primary);
     overflow-y: auto;
     transition: all var(--transition-base);
+    /* CRITICAL: Ensure proper corner rendering */
+    border-radius: 0;
+    outline: none;
 }
 
 .markdown-input:focus {
@@ -399,6 +410,7 @@ h1 {
 .preview::-webkit-scrollbar-track {
     background: var(--bg-tertiary);
     border-radius: var(--border-radius-sm);
+    margin: 2px; /* Add margin to prevent corner overlap */
 }
 
 .markdown-input::-webkit-scrollbar-thumb,
@@ -413,6 +425,12 @@ h1 {
     background: var(--text-secondary);
 }
 
+/* CRITICAL: Fix scrollbar corner rendering */
+.markdown-input::-webkit-scrollbar-corner,
+.preview::-webkit-scrollbar-corner {
+    background: var(--bg-secondary);
+}
+
 /* ==========================================
    Preview Styles - SCROLLING FIXES
    ========================================== */
@@ -424,6 +442,9 @@ h1 {
     padding: var(--panel-padding);
     background: var(--bg-secondary);
     transition: all var(--transition-base);
+    /* CRITICAL: Ensure proper corner rendering with scrollable content */
+    border-radius: 0;
+    position: relative;
 }
 
 .preview.zoom-in {
@@ -468,6 +489,7 @@ h1 {
     flex-wrap: wrap;
     background: var(--bg-tertiary);
     flex-shrink: 0;
+    /* REMOVED: border-radius since this is not the bottom of the panel */
 }
 
 .btn {
@@ -565,6 +587,9 @@ h1 {
     border-top: 2px solid var(--border-color);
     padding: 1.5rem;
     background: var(--bg-tertiary);
+    /* CRITICAL: Respect parent panel border radius */
+    border-bottom-left-radius: var(--border-radius-lg);
+    border-bottom-right-radius: var(--border-radius-lg);
 }
 
 .server-status {
