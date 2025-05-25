@@ -3,6 +3,7 @@
 const express = require('express');
 const puppeteer = require('puppeteer');
 const { execSync } = require('child_process');
+
 const fs = require('fs');
 const path = require('path');
 const { marked } = require('marked');
@@ -16,6 +17,11 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static('public')); // Serve your frontend files
+
+app.use('/lib/marked', express.static('node_modules/marked'));
+app.use('/lib/highlight.js', express.static('node_modules/@highlightjs/cdn-assets'));
+
+
 
 // Configure marked - simple setup since we'll highlight after
 marked.setOptions({

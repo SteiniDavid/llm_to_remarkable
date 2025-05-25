@@ -6,6 +6,10 @@ let serverOnline = false;
 let currentZoom = 1;
 let debounceTimer = null;
 
+// Cache for external content
+let sampleContent = null;
+let htmlTemplate = null;
+
 // ==========================================
 // Initialization
 // ==========================================
@@ -48,7 +52,36 @@ window.addEventListener('load', () => {
     
     // Set up auto-save
     setupAutoSave();
+    
+    // Load external content files
+    loadExternalContent();
 });
+
+// ==========================================
+// External Content Loading
+// ==========================================
+
+async function loadExternalContent() {
+    try {
+        // Load sample content
+        const sampleResponse = await fetch('./sample-content.md');
+        if (sampleResponse.ok) {
+            sampleContent = await sampleResponse.text();
+        } else {
+            console.error('Could not load sample-content.md');
+        }
+        
+        // Load HTML template
+        const templateResponse = await fetch('./html-template.html');
+        if (templateResponse.ok) {
+            htmlTemplate = await templateResponse.text();
+        } else {
+            console.error('Could not load html-template.html');
+        }
+    } catch (error) {
+        console.error('Error loading external content files:', error);
+    }
+}
 
 // ==========================================
 // Theme Management
@@ -300,125 +333,33 @@ function applyZoom() {
 // Sample Content
 // ==========================================
 
-function loadSample() {
-    const sample = `# Data Processing Analysis
-
-Welcome to this **comprehensive guide** on modern data processing techniques.
-
-## Introduction
-
-This document covers *essential concepts* in data processing with practical examples.
-
-## Code Examples
-
-### Python Implementation
-
-\`\`\`python
-import pandas as pd
-import numpy as np
-
-def process_data(df):
-    """Clean and process the dataframe"""
-    # Remove null values
-    df = df.dropna()
+async function loadSample() {
+    // Try to use cached content first
+    if (sampleContent) {
+        document.getElementById('markdownInput').value = sampleContent;
+        updateCharCount();
+        convertToHTML(true);
+        showToast('Sample content loaded', 'success');
+        return;
+    }
     
-    # Apply transformations
-    df['processed'] = df['value'].apply(lambda x: x * 2)
-    
-    return df
-
-# Example usage
-data = pd.DataFrame({
-    'value': [1, 2, 3, 4, 5],
-    'category': ['A', 'B', 'A', 'B', 'C']
-})
-
-result = process_data(data)
-print(result.head())
-\`\`\`
-
-### JavaScript Alternative
-
-\`\`\`javascript
-const processData = (data) => {
-    // Filter out null values
-    return data
-        .filter(item => item.value !== null)
-        .map(item => ({
-            ...item,
-            processed: item.value * 2
-        }));
-};
-
-// Example usage
-const dataset = [
-    { value: 1, category: 'A' },
-    { value: 2, category: 'B' },
-    { value: null, category: 'C' },
-    { value: 4, category: 'B' }
-];
-
-const result = processData(dataset);
-console.log(result);
-\`\`\`
-
-### SQL Query Example
-
-\`\`\`sql
--- Select processed data with aggregations
-SELECT 
-    category,
-    COUNT(*) as count,
-    AVG(value) as avg_value,
-    SUM(value * 2) as processed_sum
-FROM 
-    data_table
-WHERE 
-    value IS NOT NULL
-GROUP BY 
-    category
-ORDER BY 
-    avg_value DESC;
-\`\`\`
-
-## Key Takeaways
-
-1. **Data Cleaning** - Always validate and clean your input data
-2. **Transformation** - Apply consistent transformations across datasets
-3. **Documentation** - Document your processing steps thoroughly
-
-> "Good data processing is the foundation of reliable analysis" - Data Science Principles
-
-## Performance Considerations
-
-When working with large datasets, consider:
-
-- Using vectorized operations instead of loops
-- Implementing proper indexing strategies
-- Monitoring memory usage during processing
-- Utilizing parallel processing where appropriate
-
-### Table Example
-
-| Method | Performance | Memory Usage | Complexity |
-|--------|------------|--------------|------------|
-| Pandas | Fast | High | Low |
-| NumPy | Very Fast | Medium | Medium |
-| Pure Python | Slow | Low | Low |
-| SQL | Fast | Low | Medium |
-
-## Conclusion
-
-Effective data processing requires attention to detail and consistent methodology. Following these principles will help ensure reliable and reproducible results.
-
----
-
-*Created with LLM to reMarkable converter*`;
-
-    document.getElementById('markdownInput').value = sample;
-    updateCharCount();
-    convertToHTML(true);
-    showToast('Sample content loaded', 'success');
+    // Load from file
+    try {
+        const response = await fetch('./sample-content.md');
+        if (response.ok) {
+            const content = await response.text();
+            sampleContent = content; // Cache it
+            document.getElementById('markdownInput').value = content;
+            updateCharCount();
+            convertToHTML(true);
+            showToast('Sample content loaded', 'success');
+        } else {
+            throw new Error('Could not load sample content');
+        }
+    } catch (error) {
+        showToast('Error: Could not load sample-content.md', 'error');
+        console.error('Failed to load sample content:', error);
+    }
 }
 
 function clearInput() {
@@ -455,6 +396,10 @@ function downloadHTML() {
     }
 
     const fullHTML = generateFullHTML(preview.innerHTML);
+    if (!fullHTML) {
+        return; // Error already shown in generateFullHTML
+    }
+    
     const blob = new Blob([fullHTML], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -468,82 +413,12 @@ function downloadHTML() {
 }
 
 function generateFullHTML(content) {
-    const theme = document.documentElement.getAttribute('data-theme');
+    if (!htmlTemplate) {
+        showToast('Error: HTML template not loaded', 'error');
+        return null;
+    }
     
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>LLM Output for reMarkable</title>
-    <style>
-        @page { size: A4; margin: 15mm; }
-        body { 
-            font-family: Georgia, serif; 
-            font-size: 11pt; 
-            line-height: 1.6; 
-            color: #000; 
-            background: white;
-            margin: 0;
-            padding: 0;
-        }
-        h1 { font-size: 16pt; margin: 20px 0 12px 0; border-bottom: 2px solid #000; padding-bottom: 5px; }
-        h2 { font-size: 14pt; margin: 16px 0 10px 0; }
-        h3 { font-size: 12pt; margin: 14px 0 8px 0; }
-        pre { 
-            background: transparent; 
-            border: 2px solid #000; 
-            padding: 12px; 
-            margin: 12px 0; 
-            border-radius: 4px;
-            font-family: 'Monaco', 'Courier New', monospace;
-            font-size: 9pt;
-            line-height: 1.4;
-            overflow-wrap: break-word;
-            white-space: pre-wrap;
-        }
-        code { 
-            background: transparent; 
-            padding: 3px 6px; 
-            border: 1px solid #333;
-            border-radius: 3px;
-            font-family: 'Monaco', 'Courier New', monospace;
-            font-size: 9pt;
-        }
-        pre code { background: none; padding: 0; border: none; }
-        blockquote { 
-            border-left: 4px solid #000; 
-            margin: 12px 0; 
-            padding-left: 12px; 
-            font-style: italic;
-            color: #333;
-        }
-        table {
-            border-collapse: collapse;
-            width: 100%;
-            margin: 12px 0;
-        }
-        th, td {
-            border: 1px solid #333;
-            padding: 8px;
-            text-align: left;
-        }
-        th { background-color: #f2f2f2; font-weight: bold; }
-        
-        /* Syntax highlighting for e-ink */
-        .hljs { background: transparent !important; }
-        .hljs-keyword, .hljs-selector-tag, .hljs-title { color: #0033cc !important; font-weight: bold !important; }
-        .hljs-string, .hljs-attr { color: #008800 !important; }
-        .hljs-comment { color: #666666 !important; font-style: italic !important; }
-        .hljs-number, .hljs-literal { color: #cc5200 !important; }
-        .hljs-title.function_ { color: #6600cc !important; font-weight: bold !important; }
-        .hljs-variable { color: #006666 !important; }
-        .hljs-type { color: #990099 !important; font-weight: bold !important; }
-    </style>
-</head>
-<body>
-${content}
-</body>
-</html>`;
+    return htmlTemplate.replace('{{CONTENT}}', content);
 }
 
 function printToPDF() {
@@ -800,7 +675,7 @@ function showToast(message, type = 'info') {
         setTimeout(() => {
             toast.remove();
         }, 300);
-    }, 4000);
+    }, 1100);
 }
 
 // ==========================================
