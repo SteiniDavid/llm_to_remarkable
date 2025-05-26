@@ -9,6 +9,8 @@ const path = require('path');
 const { marked } = require('marked');
 const cors = require('cors');
 
+const hljs = require('highlight.js');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
