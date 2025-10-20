@@ -9,5 +9,7 @@ services:
     environment:
       - PORT=3020
       - RMAPI_CONFIG=/home/nodeapp/.config/.rmapi
+    # Increase shared memory for Puppeteer/Chromium
+    shm_size: '2gb'
 volumes:
   llm2rm_config:

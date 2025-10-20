@@ -37,9 +37,10 @@ RUN npm ci --omit=dev
 # Copy the rest of your app source
 COPY . .
 
-# Create a non-root user and give ownership of app & config dir
+# Create a non-root user and give ownership of app, config, and temp dirs
 RUN useradd -m -u 1001 nodeapp \
  && mkdir -p /home/nodeapp/.config \
+ && mkdir -p /app/temp \
  && chown -R nodeapp:nodeapp /app /home/nodeapp
 
 USER nodeapp
@@ -51,5 +52,10 @@ VOLUME ["/home/nodeapp/.config"]
 # Expose and run
 EXPOSE 3020
 ENV PORT=3020
+
+# Health check to ensure the server is responsive
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3020/api/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+
 CMD ["npm","start"]
 

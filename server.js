@@ -621,17 +621,26 @@ app.get('/api/remarkable-folders', (req, res) => {
 
 // Initialize server
 async function startServer() {
-  const rmApiReady = await initRmapi();
-  if (!rmApiReady) {
-    console.log('\n⚠️  WARNING: rmapi is not authenticated!');
-    console.log('   Run this command to authenticate: rmapi');
-    console.log('   Then restart this server\n');
-  }
+  // Start the HTTP server first - don't block on rmapi
   app.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
-    console.log(`🔧 rmapi status: ${rmApiReady ? '✅ Ready' : '❌ Not authenticated'}`);
   });
+
+  // Check rmapi status asynchronously (non-blocking)
+  setTimeout(async () => {
+    try {
+      const rmApiReady = await initRmapi();
+      if (!rmApiReady) {
+        console.log('\n⚠️  WARNING: rmapi is not authenticated!');
+        console.log('   Run this command to authenticate: rmapi');
+        console.log('   The server will continue running, but upload functionality will be unavailable.\n');
+      }
+    } catch (error) {
+      console.log('⚠️  Could not check rmapi status:', error.message);
+      console.log('   The server will continue running, but upload functionality may be unavailable.\n');
+    }
+  }, 100); // Check after server is fully started
 }
 
 // Error handling
